@@ -15,7 +15,8 @@ Example:
 import sys
 import os
 
-# Add parent directory to path to import utilities
+# Add parent directory to path to allow running script standalone
+# For production use, consider installing package with: pip install -e .
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utilities.string_utils import reverse_string, capitalize_words

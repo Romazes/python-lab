@@ -28,6 +28,8 @@ def capitalize_words(text: str) -> str:
     """
     Capitalize the first letter of each word in the string.
     
+    Note: Multiple consecutive spaces will be collapsed into single spaces.
+    
     Args:
         text: The string to capitalize
         
@@ -39,5 +41,7 @@ def capitalize_words(text: str) -> str:
         'Hello World'
         >>> capitalize_words("python is awesome")
         'Python Is Awesome'
+        >>> capitalize_words("hello  world")  # Multiple spaces collapsed
+        'Hello World'
     """
     return ' '.join(word.capitalize() for word in text.split())
