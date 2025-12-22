@@ -1,3 +1,26 @@
+"""
+test_merge_aud_future_expiry.py
+
+Pytest tests for merge_aud_future_expiry.py script.
+
+These tests verify that:
+
+1. Non-quarter expiry folders are correctly merged into the next quarter folder.
+2. Quarter expiry folders remain as-is.
+3. Missing last-quarter folders are automatically created if needed.
+4. ZIP files are properly copied or merged without losing data.
+
+Test folder structure:
+
+- Uses temporary directories provided by pytest's tmp_path fixture.
+- Creates mock expiry folders with ZIP files inside.
+- Checks that merged ZIPs exist in the correct output folders.
+
+Example:
+
+    pytest -v tests/test_merge_aud_future_expiry.py
+"""
+
 from zipfile import ZipFile
 from scripts.merge_aud_future_expiry import (
     ExpiryFolder,

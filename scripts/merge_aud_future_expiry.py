@@ -1,3 +1,28 @@
+"""
+merge_aud_future_expiry.py
+
+This script merges AUD future option expiry folders into their correct quarterly folders.
+
+Folder structure:
+
+    futureoption/cme/minute/adu/YYYYMM/
+
+- Each subfolder YYYYMM represents a futures expiry month.
+- Only quarter months (March, June, September, December) are considered "correct" expiries.
+- If a folder is not a quarter month, its contents are merged into the next quarter folder.
+- ZIP files inside each expiry folder are merged (added or overwritten if duplicates) in the target folder.
+
+Example usage:
+
+    python merge_aud_future_expiry.py
+
+Output:
+
+- Merged folders are written to "temp-output-directory" in the same relative structure
+  as the source folders.
+- Logs show which folders were merged or skipped.
+"""
+
 import os
 import shutil
 from datetime import datetime
