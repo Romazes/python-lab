@@ -57,14 +57,35 @@ def get_sorted_expiry_folders(path: str) -> List[ExpiryFolder]:
     return sorted(folders, key=lambda f: f.expiry_date)  # O(n log n)
 
 
+def compute_next_quarter(date: datetime) -> ExpiryFolder:
+    """
+    Compute the next calendar quarter after the given date.
+    """
+    year = date.year
+    month = date.month
+
+    if month <= 3:
+        qm = 3
+    elif month <= 6:
+        qm = 6
+    elif month <= 9:
+        qm = 9
+    else:
+        qm = 12
+
+    return ExpiryFolder(f"{year}{qm:02d}")
+
+
 def next_quarter(expiry: ExpiryFolder, all_folders: List[ExpiryFolder]) -> ExpiryFolder:
-    """
-    Find the next quarterly expiry AFTER the given expiry.
-    """
+    # 1️ Try to find existing next quarter
     for f in all_folders:
         if f.expiry_date > expiry.expiry_date and f.is_quarter:
             return f
-    raise RuntimeError(f"No next quarter found for {expiry.name}")
+
+    # 2️ Otherwise compute & create next quarter
+    computed = compute_next_quarter(expiry.expiry_date)
+    print(f"[CREATE] {expiry.name} -> {computed.name}")
+    return computed
 
 
 def merge_zip(src_zip: str, dst_zip: str):
@@ -82,25 +103,24 @@ def merge_zip(src_zip: str, dst_zip: str):
 
 def merge_expiries(src_root: str, out_root: str):
     expiries = get_sorted_expiry_folders(src_root)
-
-    # Map: source expiry -> target quarter expiry
-    merge_map: Dict[str, str] = {}
+    known = {e.name: e for e in expiries}
 
     for exp in expiries:
         if exp.is_quarter:
-            merge_map[exp.name] = exp.name
+            target = exp
             print(f"[OK]   {exp.name} is a quarter expiry")
         else:
-            target = next_quarter(exp, expiries)
-            merge_map[exp.name] = target.name
+            target = next_quarter(exp, list(known.values()))
             print(f"[MERGE] {exp.name} -> {target.name}")
 
-    # Execute merge
-    for src_name, dst_name in merge_map.items():
-        src_dir = os.path.join(src_root, src_name)
-        dst_dir = os.path.join(out_root, dst_name)
+            if target.name not in known:
+                known[target.name] = target
+
+        src_dir = os.path.join(src_root, exp.name)
+        dst_dir = os.path.join(out_root, target.name)
         os.makedirs(dst_dir, exist_ok=True)
 
+        # Execute merge
         for file in os.listdir(src_dir):
             if not file.lower().endswith(".zip"):
                 continue
