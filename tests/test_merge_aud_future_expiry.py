@@ -46,14 +46,12 @@ def test_full_merge(tmp_path):
 
     merge_expiries(str(src), str(out))
 
-    merged = out / "202503" / "a.zip"
+    # Small change: merged path is under "adu"
+    merged = out / "adu" / "202503" / "a.zip"
     assert merged.exists()
 
 
 def test_missing_last_quarter(tmp_path):
-    from scripts.merge_aud_future_expiry import merge_expiries
-    from zipfile import ZipFile
-
     src = tmp_path / "adu"
     src.mkdir()
 
@@ -67,4 +65,4 @@ def test_missing_last_quarter(tmp_path):
 
     merge_expiries(str(src), str(out))
 
-    assert (out / "202506" / "a.zip").exists()
+    assert (out / "adu" / "202506" / "a.zip").exists()

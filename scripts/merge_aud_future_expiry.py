@@ -116,8 +116,10 @@ def merge_expiries(src_root: str, out_root: str):
             if target.name not in known:
                 known[target.name] = target
 
+        # Preserve folder structure relative to source
+        rel_path = os.path.relpath(src_root, os.path.dirname(src_root))
         src_dir = os.path.join(src_root, exp.name)
-        dst_dir = os.path.join(out_root, target.name)
+        dst_dir = os.path.join(out_root, rel_path, target.name)
         os.makedirs(dst_dir, exist_ok=True)
 
         # Execute merge
