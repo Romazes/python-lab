@@ -3,7 +3,7 @@ import shutil
 from datetime import datetime
 from zipfile import ZipFile, ZIP_DEFLATED
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import List
 
 QUARTER_MONTHS = {3, 6, 9, 12}  # March, June, September, December
 
@@ -77,12 +77,12 @@ def compute_next_quarter(date: datetime) -> ExpiryFolder:
 
 
 def next_quarter(expiry: ExpiryFolder, all_folders: List[ExpiryFolder]) -> ExpiryFolder:
-    # 1️ Try to find existing next quarter
+    # 1 Try to find existing next quarter
     for f in all_folders:
         if f.expiry_date > expiry.expiry_date and f.is_quarter:
             return f
 
-    # 2️ Otherwise compute & create next quarter
+    # 2 Otherwise compute & create next quarter
     computed = compute_next_quarter(expiry.expiry_date)
     print(f"[CREATE] {expiry.name} -> {computed.name}")
     return computed
@@ -148,7 +148,7 @@ def main():
 
     merge_expiries(provided_path_abs, temp_output_directory)
 
-    print("\nDone ✅")
+    print("\nDone \u2714")
 
 
 if __name__ == "__main__":
