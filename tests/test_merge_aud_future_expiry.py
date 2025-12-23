@@ -9,6 +9,8 @@ These tests verify that:
 2. Quarter expiry folders remain as-is.
 3. Missing last-quarter folders are automatically created if needed.
 4. ZIP files are properly copied or merged without losing data.
+5. Duplicate entries in ZIP files are skipped to prevent multiple entries with the same name.
+6. Non-duplicate files are correctly added when merging ZIP files.
 
 Test folder structure:
 
@@ -26,6 +28,7 @@ from scripts.merge_aud_future_expiry import (
     ExpiryFolder,
     next_quarter,
     merge_expiries,
+    merge_zip,
 )
 
 
@@ -89,3 +92,87 @@ def test_missing_last_quarter(tmp_path):
     merge_expiries(str(src), str(out))
 
     assert (out / "adu" / "202506" / "a.zip").exists()
+
+
+def test_merge_zip_no_duplicates(tmp_path):
+    """Test that merge_zip correctly adds non-duplicate files."""
+    src_zip = tmp_path / "src.zip"
+    dst_zip = tmp_path / "dst.zip"
+
+    # Create source ZIP with files a.txt and b.txt
+    with ZipFile(src_zip, "w") as z:
+        z.writestr("a.txt", "content_a")
+        z.writestr("b.txt", "content_b")
+
+    # Create destination ZIP with file c.txt
+    with ZipFile(dst_zip, "w") as z:
+        z.writestr("c.txt", "content_c")
+
+    # Merge source into destination
+    merge_zip(str(src_zip), str(dst_zip))
+
+    # Verify all three files are in the destination
+    with ZipFile(dst_zip, "r") as z:
+        names = z.namelist()
+        assert "a.txt" in names
+        assert "b.txt" in names
+        assert "c.txt" in names
+        assert len(names) == 3
+
+
+def test_merge_zip_with_duplicates(tmp_path):
+    """Test that merge_zip skips duplicate entries to prevent multiple entries with the same name."""
+    src_zip = tmp_path / "src.zip"
+    dst_zip = tmp_path / "dst.zip"
+
+    # Create source ZIP with files a.txt and b.txt
+    with ZipFile(src_zip, "w") as z:
+        z.writestr("a.txt", "new_content_a")
+        z.writestr("b.txt", "new_content_b")
+
+    # Create destination ZIP with files a.txt (different content) and c.txt
+    with ZipFile(dst_zip, "w") as z:
+        z.writestr("a.txt", "old_content_a")
+        z.writestr("c.txt", "content_c")
+
+    # Merge source into destination
+    merge_zip(str(src_zip), str(dst_zip))
+
+    # Verify no duplicate entries and original content is preserved
+    with ZipFile(dst_zip, "r") as z:
+        names = z.namelist()
+        # Should have a.txt (original), b.txt (new), c.txt (original)
+        assert names.count("a.txt") == 1, "a.txt should appear only once"
+        assert names.count("b.txt") == 1, "b.txt should appear only once"
+        assert names.count("c.txt") == 1, "c.txt should appear only once"
+        assert len(names) == 3
+        
+        # Original content should be preserved (not overwritten)
+        assert z.read("a.txt").decode() == "old_content_a"
+        assert z.read("b.txt").decode() == "new_content_b"
+        assert z.read("c.txt").decode() == "content_c"
+
+
+def test_merge_zip_create_new_destination(tmp_path):
+    """Test that merge_zip creates a new destination when it doesn't exist."""
+    src_zip = tmp_path / "src.zip"
+    dst_zip = tmp_path / "dst.zip"
+
+    # Create source ZIP
+    with ZipFile(src_zip, "w") as z:
+        z.writestr("a.txt", "content_a")
+        z.writestr("b.txt", "content_b")
+
+    # Destination doesn't exist yet
+    assert not dst_zip.exists()
+
+    # Merge source into non-existent destination
+    merge_zip(str(src_zip), str(dst_zip))
+
+    # Verify destination was created with all files
+    assert dst_zip.exists()
+    with ZipFile(dst_zip, "r") as z:
+        names = z.namelist()
+        assert "a.txt" in names
+        assert "b.txt" in names
+        assert len(names) == 2

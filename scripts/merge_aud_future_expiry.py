@@ -10,7 +10,8 @@ Folder structure:
 - Each subfolder YYYYMM represents a futures expiry month.
 - Only quarter months (March, June, September, December) are considered "correct" expiries.
 - If a folder is not a quarter month, its contents are merged into the next quarter folder.
-- ZIP files inside each expiry folder are merged (added or overwritten if duplicates) in the target folder.
+- ZIP files inside each expiry folder are merged into the target folder.
+- Duplicate entries (files with the same name) are skipped to prevent multiple entries in ZIP files.
 
 Example usage:
 
@@ -122,13 +123,21 @@ def next_quarter(expiry: ExpiryFolder, all_folders: List[ExpiryFolder]) -> Expir
 def merge_zip(src_zip: str, dst_zip: str):
     """
     Merge src_zip into dst_zip (append files).
+    Avoids creating duplicate entries in the destination ZIP.
     """
     if not os.path.exists(dst_zip):
         shutil.copy(src_zip, dst_zip)
         return
 
     with ZipFile(dst_zip, "a", ZIP_DEFLATED) as dst, ZipFile(src_zip, "r") as src:
+        # Avoid creating duplicate entries in the destination ZIP:
+        # if a name already exists, skip it so there is only one entry per name.
+        existing_names = set(dst.namelist())
         for name in src.namelist():
+            if name in existing_names:
+                # Skip duplicate entries to prevent multiple entries with the same name
+                logging.debug(f"Skipping duplicate entry: {name}")
+                continue
             dst.writestr(name, src.read(name))
 
 
