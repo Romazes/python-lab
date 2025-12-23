@@ -102,7 +102,7 @@ def compute_next_quarter(date: datetime) -> ExpiryFolder:
 
 
 def next_quarter(expiry: ExpiryFolder, all_folders: List[ExpiryFolder]) -> ExpiryFolder:
-    # 1 Try to find existing next quarter
+    # 1. Try to find existing next quarter
     for f in all_folders:
         if f.expiry_date > expiry.expiry_date and f.is_quarter:
             return f
