@@ -72,6 +72,16 @@ def test_full_merge(tmp_path):
     # Small change: merged path is under "adu"
     merged = out / "adu" / "202503" / "a.zip"
     assert merged.exists()
+    
+    # Verify merged ZIP contains files from both source folders
+    with ZipFile(merged, "r") as z:
+        namelist = z.namelist()
+        assert "x.txt" in namelist, "x.txt from 202501 should be in merged ZIP"
+        assert "y.txt" in namelist, "y.txt from 202502 should be in merged ZIP"
+        
+        # Verify content of both files
+        assert z.read("x.txt").decode() == "501", "x.txt content should match"
+        assert z.read("y.txt").decode() == "502", "y.txt content should match"
 
 
 def test_missing_last_quarter(tmp_path):
