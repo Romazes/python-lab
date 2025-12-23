@@ -183,11 +183,11 @@ def test_merge_zip_source_with_internal_duplicates(tmp_path):
     src_zip = tmp_path / "src.zip"
     dst_zip = tmp_path / "dst.zip"
 
-    # Create source ZIP with duplicate entries (artificially)
-    # Note: Normal ZipFile writing won't create duplicates, but we can simulate the scenario
+    # Create source ZIP with duplicate entries by using append mode
+    # This simulates a corrupted or improperly created ZIP file
     with ZipFile(src_zip, "w") as z:
         z.writestr("a.txt", "content_a_first")
-        # In append mode, add the same file again
+    # Append mode allows adding the same filename again (creates duplicate)
     with ZipFile(src_zip, "a") as z:
         z.writestr("a.txt", "content_a_second")
 
