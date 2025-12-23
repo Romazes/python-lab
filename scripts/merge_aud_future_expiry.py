@@ -25,12 +25,19 @@ Output:
 
 import os
 import shutil
+import logging
 from datetime import datetime
 from zipfile import ZipFile, ZIP_DEFLATED
 from dataclasses import dataclass, field
 from typing import List
 
 QUARTER_MONTHS = {3, 6, 9, 12}  # March, June, September, December
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s: %(message)s'
+)
 
 
 @dataclass(frozen=True)
@@ -73,8 +80,7 @@ def get_sorted_expiry_folders(path: str) -> List[ExpiryFolder]:
     for name in os.listdir(path):
         full_path = os.path.join(path, name)
         if not os.path.isdir(full_path):
-            print(
-                f"error.get_sorted_expiry_folders: reason=skipping_file, file=\"{name}\"")
+            logging.warning(f"Skipping non-directory file: {name}")
             continue  # skip files
 
         folders.append(ExpiryFolder(name))
@@ -109,7 +115,7 @@ def next_quarter(expiry: ExpiryFolder, all_folders: List[ExpiryFolder]) -> Expir
 
     # 2. Otherwise compute and create next quarter
     computed = compute_next_quarter(expiry.expiry_date)
-    print(f"[CREATE] {expiry.name} -> {computed.name}")
+    logging.info(f"Creating next quarter: {expiry.name} -> {computed.name}")
     return computed
 
 
@@ -133,10 +139,10 @@ def merge_expiries(src_root: str, out_root: str):
     for exp in expiries:
         if exp.is_quarter:
             target = exp
-            print(f"[OK]   {exp.name} is a quarter expiry")
+            logging.info(f"{exp.name} is a quarter expiry")
         else:
             target = next_quarter(exp, list(known.values()))
-            print(f"[MERGE] {exp.name} -> {target.name}")
+            logging.info(f"Merging {exp.name} -> {target.name}")
 
             if target.name not in known:
                 known[target.name] = target
@@ -171,11 +177,11 @@ def main():
     # Prepare output
     os.makedirs(temp_output_directory, exist_ok=True)
 
-    print(f"\n===== Processing provided path: {provided_path_abs} =====")
+    logging.info(f"Processing provided path: {provided_path_abs}")
 
     merge_expiries(provided_path_abs, temp_output_directory)
 
-    print("\nDone \u2714")
+    logging.info("Done \u2714")
 
 
 if __name__ == "__main__":
