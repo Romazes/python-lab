@@ -107,7 +107,7 @@ def next_quarter(expiry: ExpiryFolder, all_folders: List[ExpiryFolder]) -> Expir
         if f.expiry_date > expiry.expiry_date and f.is_quarter:
             return f
 
-    # 2 Otherwise compute & create next quarter
+    # 2. Otherwise compute and create next quarter
     computed = compute_next_quarter(expiry.expiry_date)
     print(f"[CREATE] {expiry.name} -> {computed.name}")
     return computed
