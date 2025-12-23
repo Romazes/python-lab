@@ -83,7 +83,14 @@ def get_sorted_expiry_folders(path: str) -> List[ExpiryFolder]:
             logging.warning(f"Skipping non-directory file: {name}")
             continue  # skip files
 
-        folders.append(ExpiryFolder(name))
+        try:
+            folder = ExpiryFolder(name)
+        except ValueError as exc:
+            logging.warning(
+                f"Skipping invalid folder name (expected YYYYMM): {name} - {exc}")
+            continue  # skip invalid folder names
+
+        folders.append(folder)
 
     return sorted(folders, key=lambda f: f.expiry_date)  # O(n log n)
 
