@@ -53,7 +53,7 @@ def test_compute_next_quarter():
 
 
 def test_full_merge(tmp_path):
-    src = tmp_path / "adu"
+    src = tmp_path / "aud"
     src.mkdir()
 
     for f in ["202501", "202502", "202503"]:
@@ -69,13 +69,13 @@ def test_full_merge(tmp_path):
 
     merge_expiries(str(src), str(out))
 
-    # Small change: merged path is under "adu"
-    merged = out / "adu" / "202503" / "a.zip"
+    # Small change: merged path is under "aud"
+    merged = out / "aud" / "202503" / "a.zip"
     assert merged.exists()
 
 
 def test_missing_last_quarter(tmp_path):
-    src = tmp_path / "adu"
+    src = tmp_path / "aud"
     src.mkdir()
 
     for f in ["202503", "202504"]:
@@ -88,4 +88,4 @@ def test_missing_last_quarter(tmp_path):
 
     merge_expiries(str(src), str(out))
 
-    assert (out / "adu" / "202506" / "a.zip").exists()
+    assert (out / "aud" / "202506" / "a.zip").exists()

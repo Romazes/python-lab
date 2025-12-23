@@ -5,7 +5,7 @@ This script merges AUD future option expiry folders into their correct quarterly
 
 Folder structure:
 
-    futureoption/cme/minute/adu/YYYYMM/
+    futureoption/cme/minute/aud/YYYYMM/
 
 - Each subfolder YYYYMM represents a futures expiry month.
 - Only quarter months (March, June, September, December) are considered "correct" expiries.
@@ -159,7 +159,7 @@ def merge_expiries(src_root: str, out_root: str):
 
 
 def main():
-    provided_path_abs = os.path.abspath("futureoption/cme/minute/adu")
+    provided_path_abs = os.path.abspath("futureoption/cme/minute/aud")
 
     if not os.path.isdir(provided_path_abs):
         raise RuntimeError(
