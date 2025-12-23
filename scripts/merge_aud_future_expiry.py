@@ -73,7 +73,7 @@ def get_sorted_expiry_folders(path: str) -> List[ExpiryFolder]:
         path (str): Path to scan for expiry folders.
 
     Returns:
-        List[str]: Sorted valid YYYYMM folder names.
+        List[ExpiryFolder]: Sorted valid YYYYMM folder names.
     """
     folders: List[ExpiryFolder] = []
 

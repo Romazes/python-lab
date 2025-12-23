@@ -106,7 +106,7 @@ def test_invalid_folder_name_handling(tmp_path):
     (src / "invalid_folder").mkdir()
     (src / "not_a_date").mkdir()
     (src / "2025abc").mkdir()  # contains letters
-    (src / "20250").mkdir()  # month = 0, invalid
+    (src / "202513").mkdir()  # month = 13, invalid
     
     # get_sorted_expiry_folders should skip invalid folders and return only valid ones
     folders = get_sorted_expiry_folders(str(src))
