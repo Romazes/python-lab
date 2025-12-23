@@ -139,6 +139,8 @@ def merge_zip(src_zip: str, dst_zip: str):
                 logging.debug(f"Skipping duplicate entry: {name}")
                 continue
             dst.writestr(name, src.read(name))
+            # Add to existing_names to handle duplicates within the source ZIP itself
+            existing_names.add(name)
 
 
 def merge_expiries(src_root: str, out_root: str):

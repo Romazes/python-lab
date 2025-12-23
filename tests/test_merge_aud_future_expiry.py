@@ -146,7 +146,7 @@ def test_merge_zip_with_duplicates(tmp_path):
         assert names.count("b.txt") == 1, "b.txt should appear only once"
         assert names.count("c.txt") == 1, "c.txt should appear only once"
         assert len(names) == 3
-        
+
         # Original content should be preserved (not overwritten)
         assert z.read("a.txt").decode() == "old_content_a"
         assert z.read("b.txt").decode() == "new_content_b"
@@ -175,4 +175,36 @@ def test_merge_zip_create_new_destination(tmp_path):
         names = z.namelist()
         assert "a.txt" in names
         assert "b.txt" in names
+        assert len(names) == 2
+
+
+def test_merge_zip_source_with_internal_duplicates(tmp_path):
+    """Test that merge_zip handles source ZIPs that internally have duplicate entries."""
+    src_zip = tmp_path / "src.zip"
+    dst_zip = tmp_path / "dst.zip"
+
+    # Create source ZIP with duplicate entries (artificially)
+    # Note: Normal ZipFile writing won't create duplicates, but we can simulate the scenario
+    with ZipFile(src_zip, "w") as z:
+        z.writestr("a.txt", "content_a_first")
+        # In append mode, add the same file again
+    with ZipFile(src_zip, "a") as z:
+        z.writestr("a.txt", "content_a_second")
+
+    # Verify source has duplicates
+    with ZipFile(src_zip, "r") as z:
+        assert z.namelist().count("a.txt") == 2
+
+    # Create destination ZIP
+    with ZipFile(dst_zip, "w") as z:
+        z.writestr("b.txt", "content_b")
+
+    # Merge source into destination
+    merge_zip(str(src_zip), str(dst_zip))
+
+    # Verify destination has each file only once
+    with ZipFile(dst_zip, "r") as z:
+        names = z.namelist()
+        assert names.count("a.txt") == 1, "a.txt should appear only once even if source had duplicates"
+        assert names.count("b.txt") == 1
         assert len(names) == 2
