@@ -99,3 +99,29 @@ def test_missing_last_quarter(tmp_path):
     merge_expiries(str(src), str(out))
 
     assert (out / "adu" / "202506" / "a.zip").exists()
+
+
+def test_invalid_folder_name_handling(tmp_path):
+    """Test that get_sorted_expiry_folders gracefully handles invalid folder names."""
+    from scripts.merge_aud_future_expiry import get_sorted_expiry_folders
+    
+    src = tmp_path / "test_source"
+    src.mkdir()
+
+    # Create valid folders
+    (src / "202501").mkdir()
+    (src / "202503").mkdir()
+    
+    # Create invalid folders (not in YYYYMM format)
+    (src / "invalid_folder").mkdir()
+    (src / "not_a_date").mkdir()
+    (src / "2025abc").mkdir()  # contains letters
+    (src / "202513").mkdir()  # month = 13, invalid
+    
+    # get_sorted_expiry_folders should skip invalid folders and return only valid ones
+    folders = get_sorted_expiry_folders(str(src))
+    
+    # Should only get the 2 valid folders
+    assert len(folders) == 2
+    assert folders[0].name == "202501"
+    assert folders[1].name == "202503"
