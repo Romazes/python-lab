@@ -177,8 +177,8 @@ def main():
     if len(sys.argv) <= 1:
         raise RuntimeError(
             "No path argument provided. This script requires one or more symbol paths to run.\n"
-            "Example:\n  python3 run.py futureoption/cme/minute/adu\n"
-            "or multiple:\n  python3 run.py futureoption/cme/minute/adu futureoption/cbot/minute/ozs"
+            "Example:\n  python3 scripts/merge_future_option_expiry.py data/futureoption/cme/minute/adu\n"
+            "or multiple:\n  python3 scripts/merge_future_option_expiry.py data/futureoption/cme/minute/adu data/futureoption/cbot/minute/ozs"
         )
 
     pending_logs = []
