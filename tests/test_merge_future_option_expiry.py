@@ -28,6 +28,7 @@ import logging
 import pytest
 from datetime import datetime
 from zipfile import ZipFile
+import scripts.merge_future_option_expiry as script_module
 from scripts.merge_future_option_expiry import (
     ExpiryFolder,
     main,
@@ -48,7 +49,6 @@ def script_temp_output_dir():
     
     Returns the path to the temp-output-directory and ensures it's cleaned up after the test.
     """
-    import scripts.merge_future_option_expiry as script_module
     script_file = script_module.__file__
     temp_output_dir = os.path.join(
         os.path.dirname(script_file), TEMP_OUTPUT_DIR_NAME)
