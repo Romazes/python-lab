@@ -24,8 +24,10 @@ Output:
 """
 
 import os
+import sys
 import shutil
 import logging
+from functools import partial
 from datetime import datetime
 from zipfile import ZipFile, ZIP_DEFLATED
 from dataclasses import dataclass, field
@@ -172,23 +174,44 @@ def merge_expiries(src_root: str, out_root: str):
 
 
 def main():
-    provided_path_abs = os.path.abspath("futureoption/cme/minute/adu")
-
-    if not os.path.isdir(provided_path_abs):
+    if len(sys.argv) <= 1:
         raise RuntimeError(
-            f"Provided path is not a directory: {provided_path_abs}")
+            "No path argument provided. This script requires one or more symbol paths to run.\n"
+            "Example:\n  python3 run.py futureoption/cme/minute/adu\n"
+            "or multiple:\n  python3 run.py futureoption/cme/minute/adu futureoption/cbot/minute/ozs"
+        )
 
-    temp_output_directory = os.path.join(os.path.dirname(
-        os.path.abspath(__file__)), "temp-output-directory")
+    pending_logs = []
+    for provided_path in sys.argv[1:]:
+        parts = os.path.normpath(provided_path).split(os.sep)
 
-    # Prepare output
-    os.makedirs(temp_output_directory, exist_ok=True)
+        if len(parts) < 4 or parts[0] != "futureoption" or parts[2] != "minute":
+            msg = f"Invalid path format: {provided_path}\nExpected: futureoption/<exchange>/minute/<symbol>"
+            pending_logs.append(partial(logging.error, msg))
+            continue
 
-    logging.info(f"Processing provided path: {provided_path_abs}")
+        provided_path_abs = os.path.abspath(provided_path)
+        if not os.path.isdir(provided_path_abs):
+            msg = f"Provided path is not a directory: {provided_path_abs}"
+            pending_logs.append(partial(logging.error, msg))
+            continue
 
-    merge_expiries(provided_path_abs, temp_output_directory)
+        temp_output_directory = os.path.join(os.path.dirname(
+            os.path.abspath(__file__)), "temp-output-directory")
 
-    logging.info("Done \u2714")
+        # Prepare output
+        os.makedirs(temp_output_directory, exist_ok=True)
+
+        logging.info(f"Processing provided path: {provided_path_abs}")
+
+        merge_expiries(provided_path_abs, temp_output_directory)
+
+    if pending_logs:
+        logging.error("Completed with %d error(s):", len(pending_logs))
+        for log_action in pending_logs:
+            log_action()
+    else:
+        logging.info("Done \u2714")
 
 
 if __name__ == "__main__":
