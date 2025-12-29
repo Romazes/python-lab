@@ -38,7 +38,7 @@ from scripts.merge_aud_future_expiry import (
 )
 
 # Constant for output directory name used across tests
-OUTPUT_DIR_NAME = "out"
+TEMP_OUTPUT_DIR_NAME = "temp-output-directory"
 
 
 @pytest.fixture
@@ -50,10 +50,11 @@ def script_temp_output_dir():
     """
     import scripts.merge_aud_future_expiry as script_module
     script_file = script_module.__file__
-    temp_output_dir = os.path.join(os.path.dirname(script_file), "temp-output-directory")
-    
+    temp_output_dir = os.path.join(
+        os.path.dirname(script_file), TEMP_OUTPUT_DIR_NAME)
+
     yield temp_output_dir
-    
+
     # Cleanup after test
     if os.path.exists(temp_output_dir):
         shutil.rmtree(temp_output_dir)
@@ -79,7 +80,7 @@ def test_compute_next_quarter():
     assert compute_next_quarter(datetime(2025, 11, 1)).name == "202512"
 
 
-def test_full_merge(tmp_path):
+def test_full_merge(tmp_path, script_temp_output_dir):
     src = tmp_path / "adu"
     src.mkdir()
 
@@ -92,7 +93,7 @@ def test_full_merge(tmp_path):
     with ZipFile(src / "202502" / "a.zip", "w") as z:
         z.writestr("y.txt", "502")
 
-    out = tmp_path / OUTPUT_DIR_NAME
+    out = tmp_path / TEMP_OUTPUT_DIR_NAME
 
     merge_expiries(str(src), str(out))
 
@@ -111,7 +112,7 @@ def test_full_merge(tmp_path):
         assert z.read("y.txt").decode() == "502", "y.txt content should match"
 
 
-def test_missing_last_quarter(tmp_path):
+def test_missing_last_quarter(tmp_path, script_temp_output_dir):
     src = tmp_path / "adu"
     src.mkdir()
 
@@ -121,7 +122,7 @@ def test_missing_last_quarter(tmp_path):
     with ZipFile(src / "202504" / "a.zip", "w") as z:
         z.writestr("x.txt", "data")
 
-    out = tmp_path / OUTPUT_DIR_NAME
+    out = tmp_path / TEMP_OUTPUT_DIR_NAME
 
     merge_expiries(str(src), str(out))
 
@@ -152,7 +153,7 @@ def test_invalid_folder_name_handling(tmp_path):
     assert folders[1].name == "202503"
 
 
-def test_quarter_folders_remain_as_is(tmp_path):
+def test_quarter_folders_remain_as_is(tmp_path, script_temp_output_dir):
     """Test that quarter expiry folders are copied as-is without merging into another quarter."""
     src = tmp_path / "adu"
     src.mkdir()
@@ -174,7 +175,7 @@ def test_quarter_folders_remain_as_is(tmp_path):
         z.writestr(
             "20241020_adu_minute_quote_american_call_5000_20250103.csv", "September data")
 
-    out = tmp_path / OUTPUT_DIR_NAME
+    out = tmp_path / TEMP_OUTPUT_DIR_NAME
 
     merge_expiries(str(src), str(out))
 
