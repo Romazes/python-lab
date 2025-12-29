@@ -21,11 +21,14 @@ Example:
     pytest -v tests/test_merge_aud_future_expiry.py
 """
 
+from datetime import datetime
 from zipfile import ZipFile
 from scripts.merge_aud_future_expiry import (
     ExpiryFolder,
     next_quarter,
     merge_expiries,
+    compute_next_quarter,
+    get_sorted_expiry_folders,
 )
 
 
@@ -44,9 +47,6 @@ def test_next_quarter():
 
 
 def test_compute_next_quarter():
-    from scripts.merge_aud_future_expiry import compute_next_quarter
-    from datetime import datetime
-
     assert compute_next_quarter(datetime(2025, 4, 1)).name == "202506"
     assert compute_next_quarter(datetime(2025, 7, 1)).name == "202509"
     assert compute_next_quarter(datetime(2025, 11, 1)).name == "202512"
@@ -54,9 +54,6 @@ def test_compute_next_quarter():
 
 def test_compute_next_quarter_with_quarter_months():
     """Test compute_next_quarter when input date is already in a quarter month."""
-    from scripts.merge_aud_future_expiry import compute_next_quarter
-    from datetime import datetime
-
     # When already in March (Q1), should still return March (current quarter end)
     assert compute_next_quarter(datetime(2025, 3, 1)).name == "202503"
     
@@ -71,13 +68,8 @@ def test_compute_next_quarter_with_quarter_months():
 
 
 def test_compute_next_quarter_year_rollover():
-    """Test compute_next_quarter with year rollover scenarios."""
-    from scripts.merge_aud_future_expiry import compute_next_quarter
-    from datetime import datetime
-
-    # December should roll over to March of next year
-    # Note: Based on current implementation, December (month 12) returns December of same year
-    # This test documents the current behavior
+    """Test compute_next_quarter with different months including year boundaries."""
+    # December returns December of same year (Q4 end)
     assert compute_next_quarter(datetime(2025, 12, 31)).name == "202512"
     
     # January should go to March of same year
@@ -138,8 +130,6 @@ def test_missing_last_quarter(tmp_path):
 
 def test_invalid_folder_name_handling(tmp_path):
     """Test that get_sorted_expiry_folders gracefully handles invalid folder names."""
-    from scripts.merge_aud_future_expiry import get_sorted_expiry_folders
-    
     src = tmp_path / "test_source"
     src.mkdir()
 
