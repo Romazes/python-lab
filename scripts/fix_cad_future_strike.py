@@ -178,13 +178,10 @@ def main():
 
         # preserve path starting after SCRIPT_DIR to make output structure readable
         rel_src = os.path.relpath(provided_path_abs, SCRIPT_DIR)
-        print(rel_src)
 
         for expiry in os.listdir(provided_path_abs):
             expiry_path = os.path.join(provided_path_abs, expiry)
-            print(OUT_BASE)
             out_expiry = os.path.join(OUT_BASE, rel_src, expiry)
-            print(out_expiry)
             os.makedirs(out_expiry, exist_ok=True)
 
             for file in os.listdir(expiry_path):
