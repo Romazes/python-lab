@@ -141,7 +141,7 @@ def merge_zip(src_zip: str, dst_zip: str):
             dst.writestr(name, src.read(name))
 
 
-def merge_expiries(src_root: str, out_root: str):
+def merge_expiries(src_root: str, out_root: str, data_root: str = "data"):
     expiries = get_sorted_expiry_folders(src_root)
     known = {e.name: e for e in expiries}
 
@@ -157,7 +157,7 @@ def merge_expiries(src_root: str, out_root: str):
                 known[target.name] = target
 
         # Preserve folder structure relative to source
-        rel_path = os.path.relpath(src_root, os.path.dirname(src_root))
+        rel_path = os.path.relpath(src_root, data_root)
         src_dir = os.path.join(src_root, exp.name)
         dst_dir = os.path.join(out_root, rel_path, target.name)
         os.makedirs(dst_dir, exist_ok=True)
@@ -185,8 +185,8 @@ def main():
     for provided_path in sys.argv[1:]:
         parts = os.path.normpath(provided_path).split(os.sep)
 
-        if len(parts) < 4 or parts[0] != "futureoption" or parts[2] != "minute":
-            msg = f"Invalid path format: {provided_path}\nExpected: futureoption/<exchange>/minute/<symbol>"
+        if len(parts) < 5 or parts[0].lower() != "data" or parts[1] != "futureoption" or parts[3] != "minute":
+            msg = f"Invalid path format: {provided_path}\nExpected: data/futureoption/<exchange>/minute/<symbol>"
             pending_logs.append(partial(logging.error, msg))
             continue
 
@@ -204,7 +204,7 @@ def main():
 
         logging.info(f"Processing provided path: {provided_path_abs}")
 
-        merge_expiries(provided_path_abs, temp_output_directory)
+        merge_expiries(provided_path_abs, temp_output_directory, parts[0])
 
     if pending_logs:
         logging.error("Completed with %d error(s):", len(pending_logs))
