@@ -182,9 +182,9 @@ def main():
 
     error_messages = []
     for provided_path in sys.argv[1:]:
-        parts = os.path.normpath(provided_path).split(os.sep)
+        parts = os.path.normpath(provided_path.lower()).split(os.sep)
 
-        if len(parts) < 5 or parts[0].lower() != "data" or parts[1] != "futureoption" or parts[3] != "minute":
+        if len(parts) != 5 or parts[0] != "data" or parts[1] != "futureoption" or parts[3] != "minute":
             msg = f"Invalid path format: {provided_path}\nExpected: data/futureoption/<exchange>/minute/<symbol>"
             error_messages.append(msg)
             continue
