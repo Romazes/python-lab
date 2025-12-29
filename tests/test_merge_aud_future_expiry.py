@@ -25,7 +25,7 @@ import os
 import sys
 import shutil
 import logging
-from contextlib import contextmanager
+import pytest
 from datetime import datetime
 from zipfile import ZipFile
 from scripts.merge_aud_future_expiry import (
@@ -38,25 +38,46 @@ from scripts.merge_aud_future_expiry import (
 )
 
 
-@contextmanager
-def temp_data_cleaner(*paths):
+@pytest.fixture
+def cleanup_paths():
     """
-    Context manager to clean up temporary directories and files after test execution.
+    Fixture to manage cleanup of temporary directories and files after test execution.
     
-    Args:
-        *paths: Variable number of paths (str or Path objects) to clean up
+    Yields a list that tests can append paths to for cleanup.
+    Cleanup happens automatically after the test completes.
     
     Usage:
-        with temp_data_cleaner(out_dir, temp_dir):
+        def test_example(cleanup_paths):
+            out_dir = tmp_path / "out"
+            cleanup_paths.append(out_dir)
             # test code here
             # cleanup happens automatically after
     """
-    try:
-        yield
-    finally:
-        for path in paths:
-            if path and os.path.exists(str(path)):
-                shutil.rmtree(str(path))
+    paths_to_cleanup = []
+    yield paths_to_cleanup
+    
+    # Cleanup happens here after test completes
+    for path in paths_to_cleanup:
+        if path and os.path.exists(str(path)):
+            shutil.rmtree(str(path))
+
+
+@pytest.fixture
+def script_temp_output_dir():
+    """
+    Fixture to get and cleanup the temp-output-directory created by the main script.
+    
+    Returns the path to the temp-output-directory and ensures it's cleaned up after the test.
+    """
+    import scripts.merge_aud_future_expiry as script_module
+    script_file = script_module.__file__
+    temp_output_dir = os.path.join(os.path.dirname(script_file), "temp-output-directory")
+    
+    yield temp_output_dir
+    
+    # Cleanup after test
+    if os.path.exists(temp_output_dir):
+        shutil.rmtree(temp_output_dir)
 
 
 def test_quarter_detection():
@@ -79,7 +100,7 @@ def test_compute_next_quarter():
     assert compute_next_quarter(datetime(2025, 11, 1)).name == "202512"
 
 
-def test_full_merge(tmp_path):
+def test_full_merge(tmp_path, cleanup_paths):
     src = tmp_path / "adu"
     src.mkdir()
 
@@ -93,26 +114,26 @@ def test_full_merge(tmp_path):
         z.writestr("y.txt", "502")
 
     out = tmp_path / "out"
+    cleanup_paths.append(out)
 
-    with temp_data_cleaner(out):
-        merge_expiries(str(src), str(out))
+    merge_expiries(str(src), str(out))
 
-        # Small change: merged path is under "adu"
-        merged = out / "adu" / "202503" / "a.zip"
-        assert merged.exists()
+    # Small change: merged path is under "adu"
+    merged = out / "adu" / "202503" / "a.zip"
+    assert merged.exists()
 
-        # Verify merged ZIP contains files from both source folders
-        with ZipFile(merged, "r") as z:
-            namelist = z.namelist()
-            assert "x.txt" in namelist, "x.txt from 202501 should be in merged ZIP"
-            assert "y.txt" in namelist, "y.txt from 202502 should be in merged ZIP"
+    # Verify merged ZIP contains files from both source folders
+    with ZipFile(merged, "r") as z:
+        namelist = z.namelist()
+        assert "x.txt" in namelist, "x.txt from 202501 should be in merged ZIP"
+        assert "y.txt" in namelist, "y.txt from 202502 should be in merged ZIP"
 
-            # Verify content of both files
-            assert z.read("x.txt").decode() == "501", "x.txt content should match"
-            assert z.read("y.txt").decode() == "502", "y.txt content should match"
+        # Verify content of both files
+        assert z.read("x.txt").decode() == "501", "x.txt content should match"
+        assert z.read("y.txt").decode() == "502", "y.txt content should match"
 
 
-def test_missing_last_quarter(tmp_path):
+def test_missing_last_quarter(tmp_path, cleanup_paths):
     src = tmp_path / "adu"
     src.mkdir()
 
@@ -123,11 +144,11 @@ def test_missing_last_quarter(tmp_path):
         z.writestr("x.txt", "data")
 
     out = tmp_path / "out"
+    cleanup_paths.append(out)
 
-    with temp_data_cleaner(out):
-        merge_expiries(str(src), str(out))
+    merge_expiries(str(src), str(out))
 
-        assert (out / "adu" / "202506" / "a.zip").exists()
+    assert (out / "adu" / "202506" / "a.zip").exists()
 
 
 def test_invalid_folder_name_handling(tmp_path):
@@ -154,7 +175,7 @@ def test_invalid_folder_name_handling(tmp_path):
     assert folders[1].name == "202503"
 
 
-def test_quarter_folders_remain_as_is(tmp_path):
+def test_quarter_folders_remain_as_is(tmp_path, cleanup_paths):
     """Test that quarter expiry folders are copied as-is without merging into another quarter."""
     src = tmp_path / "adu"
     src.mkdir()
@@ -177,35 +198,35 @@ def test_quarter_folders_remain_as_is(tmp_path):
             "20241020_adu_minute_quote_american_call_5000_20250103.csv", "September data")
 
     out = tmp_path / "out"
+    cleanup_paths.append(out)
 
-    with temp_data_cleaner(out):
-        merge_expiries(str(src), str(out))
+    merge_expiries(str(src), str(out))
 
-        # Verify each quarter folder exists in output with its original ZIP
-        march_zip = out / "adu" / "202503" / "20240320_quote_american.zip"
-        assert march_zip.exists(), "March quarter folder should exist in output"
+    # Verify each quarter folder exists in output with its original ZIP
+    march_zip = out / "adu" / "202503" / "20240320_quote_american.zip"
+    assert march_zip.exists(), "March quarter folder should exist in output"
 
-        june_zip = out / "adu" / "202506" / "20240620_trade_american.zip"
-        assert june_zip.exists(), "June quarter folder should exist in output"
+    june_zip = out / "adu" / "202506" / "20240620_trade_american.zip"
+    assert june_zip.exists(), "June quarter folder should exist in output"
 
-        september_zip = out / "adu" / "202509" / "20241020_trade_american.zip"
-        assert september_zip.exists(), "September quarter folder should exist in output"
+    september_zip = out / "adu" / "202509" / "20241020_trade_american.zip"
+    assert september_zip.exists(), "September quarter folder should exist in output"
 
-        # Verify content remains unchanged
-        with ZipFile(march_zip, "r") as z:
-            assert "20240320_adu_minute_quote_american_call_5000_20250103.csv" in z.namelist()
-            assert z.read("20240320_adu_minute_quote_american_call_5000_20250103.csv").decode(
-            ) == "March data"
+    # Verify content remains unchanged
+    with ZipFile(march_zip, "r") as z:
+        assert "20240320_adu_minute_quote_american_call_5000_20250103.csv" in z.namelist()
+        assert z.read("20240320_adu_minute_quote_american_call_5000_20250103.csv").decode(
+        ) == "March data"
 
-        with ZipFile(june_zip, "r") as z:
-            assert "20240620_adu_minute_quote_american_call_5000_20250103.csv" in z.namelist()
-            assert z.read(
-                "20240620_adu_minute_quote_american_call_5000_20250103.csv").decode() == "June data"
+    with ZipFile(june_zip, "r") as z:
+        assert "20240620_adu_minute_quote_american_call_5000_20250103.csv" in z.namelist()
+        assert z.read(
+            "20240620_adu_minute_quote_american_call_5000_20250103.csv").decode() == "June data"
 
-        with ZipFile(september_zip, "r") as z:
-            assert "20241020_adu_minute_quote_american_call_5000_20250103.csv" in z.namelist()
-            assert z.read("20241020_adu_minute_quote_american_call_5000_20250103.csv").decode(
-            ) == "September data"
+    with ZipFile(september_zip, "r") as z:
+        assert "20241020_adu_minute_quote_american_call_5000_20250103.csv" in z.namelist()
+        assert z.read("20241020_adu_minute_quote_american_call_5000_20250103.csv").decode(
+        ) == "September data"
 
 
 def test_main_no_arguments(monkeypatch):
@@ -215,14 +236,13 @@ def test_main_no_arguments(monkeypatch):
     monkeypatch.setattr(sys, 'argv', ['merge_aud_future_expiry.py'])
 
     # Should raise RuntimeError
-    import pytest
     with pytest.raises(RuntimeError) as exc_info:
         main()
 
     assert "No path argument provided" in str(exc_info.value)
 
 
-def test_main_valid_single_argument(tmp_path, monkeypatch, caplog):
+def test_main_valid_single_argument(tmp_path, monkeypatch, caplog, script_temp_output_dir):
     """Test that main() processes a single valid argument correctly."""
 
     # Create test directory structure in current directory
@@ -239,29 +259,22 @@ def test_main_valid_single_argument(tmp_path, monkeypatch, caplog):
     original_cwd = os.getcwd()
     os.chdir(tmp_path / "test_workspace")
 
-    # Get the actual path to temp-output-directory that will be created by the script
-    # The script uses os.path.dirname(os.path.abspath(__file__)) from within merge_aud_future_expiry.py
-    import scripts.merge_aud_future_expiry as script_module
-    script_file = script_module.__file__
-    temp_output_dir = os.path.join(os.path.dirname(script_file), "temp-output-directory")
-
     try:
-        with temp_data_cleaner(temp_output_dir):
-            # Mock sys.argv with a valid relative path
-            monkeypatch.setattr(
-                sys, 'argv', ['merge_aud_future_expiry.py', 'futureoption/cme/minute/adu'])
+        # Mock sys.argv with a valid relative path
+        monkeypatch.setattr(
+            sys, 'argv', ['merge_aud_future_expiry.py', 'futureoption/cme/minute/adu'])
 
-            # Run main - should complete without errors
-            with caplog.at_level(logging.INFO):
-                main()
+        # Run main - should complete without errors
+        with caplog.at_level(logging.INFO):
+            main()
 
-            # Check log contains success message
-            assert "Done" in caplog.text
+        # Check log contains success message
+        assert "Done" in caplog.text
     finally:
         os.chdir(original_cwd)
 
 
-def test_main_valid_multiple_arguments(tmp_path, monkeypatch, caplog):
+def test_main_valid_multiple_arguments(tmp_path, monkeypatch, caplog, script_temp_output_dir):
     """Test that main() processes multiple valid arguments correctly."""
 
     # Create first test directory structure
@@ -284,26 +297,20 @@ def test_main_valid_multiple_arguments(tmp_path, monkeypatch, caplog):
     original_cwd = os.getcwd()
     os.chdir(tmp_path / "test_workspace")
 
-    # Get the actual path to temp-output-directory that will be created by the script
-    import scripts.merge_aud_future_expiry as script_module
-    script_file = script_module.__file__
-    temp_output_dir = os.path.join(os.path.dirname(script_file), "temp-output-directory")
-
     try:
-        with temp_data_cleaner(temp_output_dir):
-            # Mock sys.argv with multiple valid relative paths
-            monkeypatch.setattr(sys, 'argv', [
-                'merge_aud_future_expiry.py',
-                'futureoption/cme/minute/adu',
-                'futureoption/cbot/minute/ozs'
-            ])
+        # Mock sys.argv with multiple valid relative paths
+        monkeypatch.setattr(sys, 'argv', [
+            'merge_aud_future_expiry.py',
+            'futureoption/cme/minute/adu',
+            'futureoption/cbot/minute/ozs'
+        ])
 
-            # Run main - should complete without errors
-            with caplog.at_level(logging.INFO):
-                main()
+        # Run main - should complete without errors
+        with caplog.at_level(logging.INFO):
+            main()
 
-            # Check log contains success message
-            assert "Done" in caplog.text
+        # Check log contains success message
+        assert "Done" in caplog.text
     finally:
         os.chdir(original_cwd)
 
