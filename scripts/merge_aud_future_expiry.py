@@ -205,8 +205,12 @@ def main():
         logging.info(f"Processing provided path: {provided_path_abs}")
 
         # Compute the absolute path to the data_root directory
-        # Find the parent directory that contains the data_root folder
-        data_root_abs = os.path.abspath(os.path.join(provided_path, '../' * (len(parts) - 1)))
+        # Navigate up from provided_path_abs to reach the data_root (parts[0])
+        # Example: if provided_path = "data/futureoption/cme/minute/adu" (5 parts)
+        # we need to go up 4 levels to reach "data"
+        data_root_abs = provided_path_abs
+        for _ in range(len(parts) - 1):
+            data_root_abs = os.path.dirname(data_root_abs)
         
         merge_expiries(provided_path_abs, temp_output_directory, data_root_abs)
 
