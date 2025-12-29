@@ -27,7 +27,6 @@ import os
 import sys
 import shutil
 import logging
-from functools import partial
 from datetime import datetime
 from zipfile import ZipFile, ZIP_DEFLATED
 from dataclasses import dataclass, field
@@ -181,19 +180,19 @@ def main():
             "or multiple:\n  python3 scripts/merge_future_option_expiry.py data/futureoption/cme/minute/adu data/futureoption/cbot/minute/ozs"
         )
 
-    pending_logs = []
+    error_messages = []
     for provided_path in sys.argv[1:]:
         parts = os.path.normpath(provided_path).split(os.sep)
 
         if len(parts) < 5 or parts[0].lower() != "data" or parts[1] != "futureoption" or parts[3] != "minute":
             msg = f"Invalid path format: {provided_path}\nExpected: data/futureoption/<exchange>/minute/<symbol>"
-            pending_logs.append(partial(logging.error, msg))
+            error_messages.append(msg)
             continue
 
         provided_path_abs = os.path.abspath(provided_path)
         if not os.path.isdir(provided_path_abs):
             msg = f"Provided path is not a directory: {provided_path_abs}"
-            pending_logs.append(partial(logging.error, msg))
+            error_messages.append(msg)
             continue
 
         temp_output_directory = os.path.join(os.path.dirname(
@@ -206,10 +205,10 @@ def main():
 
         merge_expiries(provided_path_abs, temp_output_directory, parts[0])
 
-    if pending_logs:
-        logging.error("Completed with %d error(s):", len(pending_logs))
-        for log_action in pending_logs:
-            log_action()
+    if error_messages:
+        logging.error("Completed with %d error(s):", len(error_messages))
+        for msg in error_messages:
+            logging.error(msg)
     else:
         logging.info("Done \u2714")
 
