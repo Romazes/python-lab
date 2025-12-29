@@ -1,7 +1,7 @@
 """
-test_merge_aud_future_expiry.py
+test_merge_future_option_expiry.py
 
-Pytest tests for merge_aud_future_expiry.py script.
+Pytest tests for merge_future_option_expiry.py script.
 
 These tests verify that:
 
@@ -18,7 +18,7 @@ Test folder structure:
 
 Example:
 
-    pytest -v tests/test_merge_aud_future_expiry.py
+    pytest -v tests/test_merge_future_option_expiry.py
 """
 
 import os
@@ -28,7 +28,7 @@ import logging
 import pytest
 from datetime import datetime
 from zipfile import ZipFile
-from scripts.merge_aud_future_expiry import (
+from scripts.merge_future_option_expiry import (
     ExpiryFolder,
     main,
     next_quarter,
@@ -48,7 +48,7 @@ def script_temp_output_dir():
     
     Returns the path to the temp-output-directory and ensures it's cleaned up after the test.
     """
-    import scripts.merge_aud_future_expiry as script_module
+    import scripts.merge_future_option_expiry as script_module
     script_file = script_module.__file__
     temp_output_dir = os.path.join(
         os.path.dirname(script_file), TEMP_OUTPUT_DIR_NAME)
@@ -210,7 +210,7 @@ def test_main_no_arguments(monkeypatch):
     """Test that main() raises RuntimeError when no arguments are provided."""
 
     # Mock sys.argv to have only the script name (no arguments)
-    monkeypatch.setattr(sys, 'argv', ['merge_aud_future_expiry.py'])
+    monkeypatch.setattr(sys, 'argv', ['merge_future_option_expiry.py'])
 
     # Should raise RuntimeError
     with pytest.raises(RuntimeError) as exc_info:
@@ -239,7 +239,7 @@ def test_main_valid_single_argument(tmp_path, monkeypatch, caplog, script_temp_o
     try:
         # Mock sys.argv with a valid relative path
         monkeypatch.setattr(
-            sys, 'argv', ['merge_aud_future_expiry.py', 'data/futureoption/cme/minute/adu'])
+            sys, 'argv', ['merge_future_option_expiry.py', 'data/futureoption/cme/minute/adu'])
 
         # Run main - should complete without errors
         with caplog.at_level(logging.INFO):
@@ -277,7 +277,7 @@ def test_main_valid_multiple_arguments(tmp_path, monkeypatch, caplog, script_tem
     try:
         # Mock sys.argv with multiple valid relative paths
         monkeypatch.setattr(sys, 'argv', [
-            'merge_aud_future_expiry.py',
+            'merge_future_option_expiry.py',
             'data/futureoption/cme/minute/adu',
             'data/futureoption/cbot/minute/ozs'
         ])
@@ -297,7 +297,7 @@ def test_main_invalid_path_format(monkeypatch, caplog):
 
     # Mock sys.argv with an invalid path format
     monkeypatch.setattr(
-        sys, 'argv', ['merge_aud_future_expiry.py', 'invalid/path'])
+        sys, 'argv', ['merge_future_option_expiry.py', 'invalid/path'])
 
     # Run main - should complete but with error logged
     with caplog.at_level(logging.ERROR):
@@ -318,7 +318,7 @@ def test_main_non_existent_directory(tmp_path, monkeypatch, caplog):
     try:
         # Mock sys.argv with a non-existent path (but valid format)
         monkeypatch.setattr(sys, 'argv', [
-                            'merge_aud_future_expiry.py', 'data/futureoption/cme/minute/nonexistent'])
+                            'merge_future_option_expiry.py', 'data/futureoption/cme/minute/nonexistent'])
 
         # Run main - should complete but with error logged
         with caplog.at_level(logging.ERROR):

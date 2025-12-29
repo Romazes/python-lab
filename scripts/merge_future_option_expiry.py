@@ -1,11 +1,11 @@
 """
-merge_aud_future_expiry.py
+merge_future_option_expiry.py
 
-This script merges AUD future option expiry folders into their correct quarterly folders.
+This script merges <ticker> future option expiry folders into their correct quarterly folders.
 
 Folder structure:
 
-    futureoption/cme/minute/adu/YYYYMM/
+    data/futureoption/cme/minute/<ticker>/YYYYMM/
 
 - Each subfolder YYYYMM represents a futures expiry month.
 - Only quarter months (March, June, September, December) are considered "correct" expiries.
@@ -14,7 +14,7 @@ Folder structure:
 
 Example usage:
 
-    python merge_aud_future_expiry.py
+    python scripts/merge_future_option_expiry.py data/futureoption/cme/minute/cau
 
 Output:
 
