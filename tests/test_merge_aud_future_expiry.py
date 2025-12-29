@@ -81,8 +81,8 @@ def test_compute_next_quarter():
 
 
 def test_full_merge(tmp_path, script_temp_output_dir):
-    src = tmp_path / "adu"
-    src.mkdir()
+    src = tmp_path / "data" / "adu"
+    src.mkdir(parents=True)
 
     for f in ["202501", "202502", "202503"]:
         (src / f).mkdir()
@@ -95,7 +95,7 @@ def test_full_merge(tmp_path, script_temp_output_dir):
 
     out = tmp_path / TEMP_OUTPUT_DIR_NAME
 
-    merge_expiries(str(src), str(out))
+    merge_expiries(str(src), str(out), str(tmp_path / "data"))
 
     # Small change: merged path is under "adu"
     merged = out / "adu" / "202503" / "a.zip"
@@ -113,8 +113,8 @@ def test_full_merge(tmp_path, script_temp_output_dir):
 
 
 def test_missing_last_quarter(tmp_path, script_temp_output_dir):
-    src = tmp_path / "adu"
-    src.mkdir()
+    src = tmp_path / "data" / "adu"
+    src.mkdir(parents=True)
 
     for f in ["202503", "202504"]:
         (src / f).mkdir()
@@ -124,7 +124,7 @@ def test_missing_last_quarter(tmp_path, script_temp_output_dir):
 
     out = tmp_path / TEMP_OUTPUT_DIR_NAME
 
-    merge_expiries(str(src), str(out))
+    merge_expiries(str(src), str(out), str(tmp_path / "data"))
 
     assert (out / "adu" / "202506" / "a.zip").exists()
 
@@ -155,8 +155,8 @@ def test_invalid_folder_name_handling(tmp_path):
 
 def test_quarter_folders_remain_as_is(tmp_path, script_temp_output_dir):
     """Test that quarter expiry folders are copied as-is without merging into another quarter."""
-    src = tmp_path / "adu"
-    src.mkdir()
+    src = tmp_path / "data" / "adu"
+    src.mkdir(parents=True)
 
     # Create quarter folders (March, June, September)
     for f in ["202503", "202506", "202509"]:
@@ -177,7 +177,7 @@ def test_quarter_folders_remain_as_is(tmp_path, script_temp_output_dir):
 
     out = tmp_path / TEMP_OUTPUT_DIR_NAME
 
-    merge_expiries(str(src), str(out))
+    merge_expiries(str(src), str(out), str(tmp_path / "data"))
 
     # Verify each quarter folder exists in output with its original ZIP
     march_zip = out / "adu" / "202503" / "20240320_quote_american.zip"
@@ -223,7 +223,7 @@ def test_main_valid_single_argument(tmp_path, monkeypatch, caplog, script_temp_o
     """Test that main() processes a single valid argument correctly."""
 
     # Create test directory structure in current directory
-    test_dir = tmp_path / "test_workspace" / \
+    test_dir = tmp_path / "test_workspace" / "data" / \
         "futureoption" / "cme" / "minute" / "adu"
     test_dir.mkdir(parents=True)
 
@@ -239,7 +239,7 @@ def test_main_valid_single_argument(tmp_path, monkeypatch, caplog, script_temp_o
     try:
         # Mock sys.argv with a valid relative path
         monkeypatch.setattr(
-            sys, 'argv', ['merge_aud_future_expiry.py', 'futureoption/cme/minute/adu'])
+            sys, 'argv', ['merge_aud_future_expiry.py', 'data/futureoption/cme/minute/adu'])
 
         # Run main - should complete without errors
         with caplog.at_level(logging.INFO):
@@ -255,7 +255,7 @@ def test_main_valid_multiple_arguments(tmp_path, monkeypatch, caplog, script_tem
     """Test that main() processes multiple valid arguments correctly."""
 
     # Create first test directory structure
-    test_dir1 = tmp_path / "test_workspace" / \
+    test_dir1 = tmp_path / "test_workspace" / "data" / \
         "futureoption" / "cme" / "minute" / "adu"
     test_dir1.mkdir(parents=True)
     (test_dir1 / "202501").mkdir()
@@ -263,7 +263,7 @@ def test_main_valid_multiple_arguments(tmp_path, monkeypatch, caplog, script_tem
         z.writestr("data1.txt", "test data 1")
 
     # Create second test directory structure
-    test_dir2 = tmp_path / "test_workspace" / \
+    test_dir2 = tmp_path / "test_workspace" / "data" / \
         "futureoption" / "cbot" / "minute" / "ozs"
     test_dir2.mkdir(parents=True)
     (test_dir2 / "202502").mkdir()
@@ -278,8 +278,8 @@ def test_main_valid_multiple_arguments(tmp_path, monkeypatch, caplog, script_tem
         # Mock sys.argv with multiple valid relative paths
         monkeypatch.setattr(sys, 'argv', [
             'merge_aud_future_expiry.py',
-            'futureoption/cme/minute/adu',
-            'futureoption/cbot/minute/ozs'
+            'data/futureoption/cme/minute/adu',
+            'data/futureoption/cbot/minute/ozs'
         ])
 
         # Run main - should complete without errors
@@ -318,7 +318,7 @@ def test_main_non_existent_directory(tmp_path, monkeypatch, caplog):
     try:
         # Mock sys.argv with a non-existent path (but valid format)
         monkeypatch.setattr(sys, 'argv', [
-                            'merge_aud_future_expiry.py', 'futureoption/cme/minute/nonexistent'])
+                            'merge_aud_future_expiry.py', 'data/futureoption/cme/minute/nonexistent'])
 
         # Run main - should complete but with error logged
         with caplog.at_level(logging.ERROR):
