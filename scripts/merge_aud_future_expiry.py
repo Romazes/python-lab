@@ -204,7 +204,11 @@ def main():
 
         logging.info(f"Processing provided path: {provided_path_abs}")
 
-        merge_expiries(provided_path_abs, temp_output_directory, parts[0])
+        # Compute the absolute path to the data_root directory
+        # Find the parent directory that contains the data_root folder
+        data_root_abs = os.path.abspath(os.path.join(provided_path, '../' * (len(parts) - 1)))
+        
+        merge_expiries(provided_path_abs, temp_output_directory, data_root_abs)
 
     if pending_logs:
         logging.error("Completed with %d error(s):", len(pending_logs))
