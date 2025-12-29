@@ -21,11 +21,14 @@ Example:
     pytest -v tests/test_merge_aud_future_expiry.py
 """
 
+import os
+import sys
+import logging
 from datetime import datetime
 from zipfile import ZipFile
-import pytest
 from scripts.merge_aud_future_expiry import (
     ExpiryFolder,
+    main,
     next_quarter,
     merge_expiries,
     compute_next_quarter,
@@ -73,13 +76,13 @@ def test_full_merge(tmp_path):
     # Small change: merged path is under "adu"
     merged = out / "adu" / "202503" / "a.zip"
     assert merged.exists()
-    
+
     # Verify merged ZIP contains files from both source folders
     with ZipFile(merged, "r") as z:
         namelist = z.namelist()
         assert "x.txt" in namelist, "x.txt from 202501 should be in merged ZIP"
         assert "y.txt" in namelist, "y.txt from 202502 should be in merged ZIP"
-        
+
         # Verify content of both files
         assert z.read("x.txt").decode() == "501", "x.txt content should match"
         assert z.read("y.txt").decode() == "502", "y.txt content should match"
@@ -110,16 +113,16 @@ def test_invalid_folder_name_handling(tmp_path):
     # Create valid folders
     (src / "202501").mkdir()
     (src / "202503").mkdir()
-    
+
     # Create invalid folders (not in YYYYMM format)
     (src / "invalid_folder").mkdir()
     (src / "not_a_date").mkdir()
     (src / "2025abc").mkdir()  # contains letters
     (src / "202513").mkdir()  # month = 13, invalid
-    
+
     # get_sorted_expiry_folders should skip invalid folders and return only valid ones
     folders = get_sorted_expiry_folders(str(src))
-    
+
     # Should only get the 2 valid folders
     assert len(folders) == 2
     assert folders[0].name == "202501"
@@ -130,93 +133,95 @@ def test_quarter_folders_remain_as_is(tmp_path):
     """Test that quarter expiry folders are copied as-is without merging into another quarter."""
     src = tmp_path / "adu"
     src.mkdir()
-    
+
     # Create quarter folders (March, June, September)
     for f in ["202503", "202506", "202509"]:
         (src / f).mkdir()
-    
+
     # Add ZIP files to each quarter folder
-    with ZipFile(src / "202503" / "march.zip", "w") as z:
-        z.writestr("march_data.txt", "March data")
-    
-    with ZipFile(src / "202506" / "june.zip", "w") as z:
-        z.writestr("june_data.txt", "June data")
-    
-    with ZipFile(src / "202509" / "september.zip", "w") as z:
-        z.writestr("september_data.txt", "September data")
-    
+    with ZipFile(src / "202503" / "20240320_quote_american.zip", "w") as z:
+        z.writestr(
+            "20240320_adu_minute_quote_american_call_5000_20250103.csv", "March data")
+
+    with ZipFile(src / "202506" / "20240620_trade_american.zip", "w") as z:
+        z.writestr(
+            "20240620_adu_minute_quote_american_call_5000_20250103.csv", "June data")
+
+    with ZipFile(src / "202509" / "20241020_trade_american.zip", "w") as z:
+        z.writestr(
+            "20241020_adu_minute_quote_american_call_5000_20250103.csv", "September data")
+
     out = tmp_path / "out"
-    
+
     merge_expiries(str(src), str(out))
-    
+
     # Verify each quarter folder exists in output with its original ZIP
-    march_zip = out / "adu" / "202503" / "march.zip"
+    march_zip = out / "adu" / "202503" / "20240320_quote_american.zip"
     assert march_zip.exists(), "March quarter folder should exist in output"
-    
-    june_zip = out / "adu" / "202506" / "june.zip"
+
+    june_zip = out / "adu" / "202506" / "20240620_trade_american.zip"
     assert june_zip.exists(), "June quarter folder should exist in output"
-    
-    september_zip = out / "adu" / "202509" / "september.zip"
+
+    september_zip = out / "adu" / "202509" / "20241020_trade_american.zip"
     assert september_zip.exists(), "September quarter folder should exist in output"
-    
+
     # Verify content remains unchanged
     with ZipFile(march_zip, "r") as z:
-        assert "march_data.txt" in z.namelist()
-        assert z.read("march_data.txt").decode() == "March data"
-    
+        assert "20240320_adu_minute_quote_american_call_5000_20250103.csv" in z.namelist()
+        assert z.read("20240320_adu_minute_quote_american_call_5000_20250103.csv").decode(
+        ) == "March data"
+
     with ZipFile(june_zip, "r") as z:
-        assert "june_data.txt" in z.namelist()
-        assert z.read("june_data.txt").decode() == "June data"
-    
+        assert "20240620_adu_minute_quote_american_call_5000_20250103.csv" in z.namelist()
+        assert z.read(
+            "20240620_adu_minute_quote_american_call_5000_20250103.csv").decode() == "June data"
+
     with ZipFile(september_zip, "r") as z:
-        assert "september_data.txt" in z.namelist()
-        assert z.read("september_data.txt").decode() == "September data"
+        assert "20241020_adu_minute_quote_american_call_5000_20250103.csv" in z.namelist()
+        assert z.read("20241020_adu_minute_quote_american_call_5000_20250103.csv").decode(
+        ) == "September data"
 
 
 def test_main_no_arguments(monkeypatch):
     """Test that main() raises RuntimeError when no arguments are provided."""
-    import sys
-    from scripts.merge_aud_future_expiry import main
-    
+
     # Mock sys.argv to have only the script name (no arguments)
     monkeypatch.setattr(sys, 'argv', ['merge_aud_future_expiry.py'])
-    
+
     # Should raise RuntimeError
     import pytest
     with pytest.raises(RuntimeError) as exc_info:
         main()
-    
+
     assert "No path argument provided" in str(exc_info.value)
 
 
 def test_main_valid_single_argument(tmp_path, monkeypatch, caplog):
     """Test that main() processes a single valid argument correctly."""
-    import sys
-    from scripts.merge_aud_future_expiry import main
-    
+
     # Create test directory structure in current directory
-    test_dir = tmp_path / "test_workspace" / "futureoption" / "cme" / "minute" / "adu"
+    test_dir = tmp_path / "test_workspace" / \
+        "futureoption" / "cme" / "minute" / "adu"
     test_dir.mkdir(parents=True)
-    
+
     # Create a test folder with a ZIP file
     (test_dir / "202501").mkdir()
     with ZipFile(test_dir / "202501" / "test.zip", "w") as z:
         z.writestr("data.txt", "test data")
-    
+
     # Change to the parent directory so the path can be relative
-    import os
     original_cwd = os.getcwd()
     os.chdir(tmp_path / "test_workspace")
-    
+
     try:
         # Mock sys.argv with a valid relative path
-        monkeypatch.setattr(sys, 'argv', ['merge_aud_future_expiry.py', 'futureoption/cme/minute/adu'])
-        
+        monkeypatch.setattr(
+            sys, 'argv', ['merge_aud_future_expiry.py', 'futureoption/cme/minute/adu'])
+
         # Run main - should complete without errors
-        import logging
         with caplog.at_level(logging.INFO):
             main()
-        
+
         # Check log contains success message
         assert "Done" in caplog.text
     finally:
@@ -225,41 +230,39 @@ def test_main_valid_single_argument(tmp_path, monkeypatch, caplog):
 
 def test_main_valid_multiple_arguments(tmp_path, monkeypatch, caplog):
     """Test that main() processes multiple valid arguments correctly."""
-    import sys
-    from scripts.merge_aud_future_expiry import main
-    
+
     # Create first test directory structure
-    test_dir1 = tmp_path / "test_workspace" / "futureoption" / "cme" / "minute" / "adu"
+    test_dir1 = tmp_path / "test_workspace" / \
+        "futureoption" / "cme" / "minute" / "adu"
     test_dir1.mkdir(parents=True)
     (test_dir1 / "202501").mkdir()
     with ZipFile(test_dir1 / "202501" / "test1.zip", "w") as z:
         z.writestr("data1.txt", "test data 1")
-    
+
     # Create second test directory structure
-    test_dir2 = tmp_path / "test_workspace" / "futureoption" / "cbot" / "minute" / "ozs"
+    test_dir2 = tmp_path / "test_workspace" / \
+        "futureoption" / "cbot" / "minute" / "ozs"
     test_dir2.mkdir(parents=True)
     (test_dir2 / "202502").mkdir()
     with ZipFile(test_dir2 / "202502" / "test2.zip", "w") as z:
         z.writestr("data2.txt", "test data 2")
-    
+
     # Change to the parent directory so the paths can be relative
-    import os
     original_cwd = os.getcwd()
     os.chdir(tmp_path / "test_workspace")
-    
+
     try:
         # Mock sys.argv with multiple valid relative paths
         monkeypatch.setattr(sys, 'argv', [
-            'merge_aud_future_expiry.py', 
+            'merge_aud_future_expiry.py',
             'futureoption/cme/minute/adu',
             'futureoption/cbot/minute/ozs'
         ])
-        
+
         # Run main - should complete without errors
-        import logging
         with caplog.at_level(logging.INFO):
             main()
-        
+
         # Check log contains success message
         assert "Done" in caplog.text
     finally:
@@ -268,17 +271,15 @@ def test_main_valid_multiple_arguments(tmp_path, monkeypatch, caplog):
 
 def test_main_invalid_path_format(monkeypatch, caplog):
     """Test that main() handles invalid path format correctly."""
-    import sys
-    from scripts.merge_aud_future_expiry import main
-    
+
     # Mock sys.argv with an invalid path format
-    monkeypatch.setattr(sys, 'argv', ['merge_aud_future_expiry.py', 'invalid/path'])
-    
+    monkeypatch.setattr(
+        sys, 'argv', ['merge_aud_future_expiry.py', 'invalid/path'])
+
     # Run main - should complete but with error logged
-    import logging
     with caplog.at_level(logging.ERROR):
         main()
-    
+
     # Check log contains error message
     assert "Invalid path format" in caplog.text
     assert "Completed with" in caplog.text and "error" in caplog.text
@@ -286,23 +287,20 @@ def test_main_invalid_path_format(monkeypatch, caplog):
 
 def test_main_non_existent_directory(tmp_path, monkeypatch, caplog):
     """Test that main() handles non-existent directory correctly."""
-    import sys
-    from scripts.merge_aud_future_expiry import main
-    
+
     # Change to tmp directory
-    import os
     original_cwd = os.getcwd()
     os.chdir(tmp_path)
-    
+
     try:
         # Mock sys.argv with a non-existent path (but valid format)
-        monkeypatch.setattr(sys, 'argv', ['merge_aud_future_expiry.py', 'futureoption/cme/minute/nonexistent'])
-        
+        monkeypatch.setattr(sys, 'argv', [
+                            'merge_aud_future_expiry.py', 'futureoption/cme/minute/nonexistent'])
+
         # Run main - should complete but with error logged
-        import logging
         with caplog.at_level(logging.ERROR):
             main()
-        
+
         # Check log contains error message
         assert "not a directory" in caplog.text
         assert "Completed with" in caplog.text and "error" in caplog.text
