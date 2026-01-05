@@ -130,8 +130,8 @@ def test_regex_pattern_invalid_filename():
         assert match is None, f"Filename '{filename}' should not match pattern"
 
 
-def test_scale_strike_with_remainder_2():
-    """Test scale_strike function for strikes that produce remainder 2."""
+def test_scale_strike_with_remainder_7():
+    """Test scale_strike function for strikes that produce remainder 7."""
     # Example: 11570 / 10_000 * 1_000 = 1157 % 10 = 7
     # This should be scaled
     scaled_strike = Decimal("11570")
@@ -144,8 +144,8 @@ def test_scale_strike_with_remainder_2():
     assert result == "11575"
 
 
-def test_scale_strike_with_remainder_7():
-    """Test scale_strike function for strikes that produce remainder 7."""
+def test_scale_strike_with_remainder_2():
+    """Test scale_strike function for strikes that produce remainder 2."""
     # Example: 11620 / 10_000 * 1_000 = 1162 % 10 = 2
     # This should be scaled
     scaled_strike = Decimal("11620")
@@ -183,9 +183,9 @@ def test_process_zip_euu_with_scaling(tmp_path):
     src_zip = tmp_path / "20251224_openinterest_american.zip"
     
     # Create CSV files with strikes that need scaling
-    # 11600 / 10_000 * 1_000 = 1160 % 10 = 0 (no scaling needed)
-    # 11570 / 10_000 * 1_000 = 1157 % 10 = 7 (scaling needed)
-    # 11620 / 10_000 * 1_000 = 1162 % 10 = 2 (scaling needed)
+    # 11600 / 10_000 * 1_000 = 1160 % 10 = 0 (remainder 0, no scaling needed)
+    # 11570 / 10_000 * 1_000 = 1157 % 10 = 7 (remainder 7, scaling needed)
+    # 11620 / 10_000 * 1_000 = 1162 % 10 = 2 (remainder 2, scaling needed)
     
     with ZipFile(src_zip, "w") as z:
         z.writestr("20251224_euu_minute_openinterest_american_call_11600_20260109.csv", "data1")
