@@ -155,8 +155,7 @@ def main():
             f"====== FOP ticker '{symbol}' | Strike scaling factor: '{strike_scaling_factor_rule}'")
 
         # preserve path starting after SCRIPT_DIR to make output structure readable
-        rel_src_data_root = os.path.relpath(provided_path_abs, SCRIPT_DIR)
-        rel_src = os.path.relpath(rel_src_data_root, "data")
+        rel_src = os.path.relpath(provided_path_abs, os.path.join(SCRIPT_DIR, "data"))
         for expiry in os.listdir(provided_path_abs):
             expiry_path = os.path.join(provided_path_abs, expiry)
             out_expiry = os.path.join(OUT_BASE, rel_src, expiry)
