@@ -379,6 +379,10 @@ def test_main_with_valid_euu_path(tmp_path, monkeypatch, capfd, script_temp_outp
     os.chdir(test_workspace)
     
     try:
+        # Mock SCRIPT_DIR to be in the same temp directory to avoid cross-drive issues on Windows
+        monkeypatch.setattr(script_module, 'SCRIPT_DIR', str(test_workspace))
+        monkeypatch.setattr(script_module, 'OUT_BASE', str(test_workspace / "temp-output-directory"))
+        
         # Mock sys.argv with the path
         monkeypatch.setattr(
             sys, 'argv', 
@@ -458,6 +462,10 @@ def test_main_with_multiple_paths(tmp_path, monkeypatch, capfd, script_temp_outp
     os.chdir(test_workspace)
     
     try:
+        # Mock SCRIPT_DIR to be in the same temp directory to avoid cross-drive issues on Windows
+        monkeypatch.setattr(script_module, 'SCRIPT_DIR', str(test_workspace))
+        monkeypatch.setattr(script_module, 'OUT_BASE', str(test_workspace / "temp-output-directory"))
+        
         # Mock sys.argv with multiple paths
         monkeypatch.setattr(
             sys, 'argv', 
