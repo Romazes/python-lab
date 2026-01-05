@@ -1,8 +1,8 @@
 """
-run_by_path.py
+fix_missed_strike_price_precision.py
 
 Usage (required):
-  python run_by_path.py <path1> [<path2> ...]
+  python fix_missed_strike_price_precision.py <path1> [<path2> ...]
 
 Each provided path should be a symbol folder, e.g.:
   futureoption/cbot/minute/ozc [futureoption/cbot/minute/oym ...]
@@ -20,7 +20,7 @@ from decimal import Decimal
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Output base (single global folder next to script)
-OUT_BASE = os.path.join(SCRIPT_DIR, "/temp-output-directory")
+OUT_BASE = os.path.join(SCRIPT_DIR, "temp-output-directory")
 
 
 class StrikeScalingRule:
@@ -61,17 +61,16 @@ DIVISOR = Decimal(10)
 REMAINDER_TWO = Decimal(2)
 REMAINDER_SEVEN = Decimal(7)
 LEAN_OPTION_SCALE = Decimal(10_000)
+TRAILING_FIVE = Decimal(5)
 
 
 def scale_strike(scaled_strike_file_name_format: Decimal, scaling: Decimal) -> str:
     next_decimal_position = scaling * Decimal(10)
     # (11570 / 10_000) + (5 / 1_000)
     scale_strike_price = (scaled_strike_file_name_format /
-                          LEAN_OPTION_SCALE) + (5 / next_decimal_position)
+                          LEAN_OPTION_SCALE) + (TRAILING_FIVE / next_decimal_position)
     scale_strike_price_file_name_format = scale_strike_price * LEAN_OPTION_SCALE
-    print(
-        f"old: {scaled_strike_file_name_format} => new: {scale_strike_price_file_name_format}")
-    return scale_strike_price_file_name_format.normalize()
+    return str(scale_strike_price_file_name_format.normalize())
 
 
 def process_zip(zip_path, out_zip_path, strike_scaling_factor_rule: StrikeScalingRule):
@@ -130,8 +129,8 @@ def main():
         # Throw an exception immediately per your requirement.
         raise RuntimeError(
             "No path argument provided. This script requires one or more symbol paths to run.\n"
-            "Example:\n  python3 run.py data/futureoption/cme/minute/adu\n"
-            "or multiple:\n  python3 run.py data/futureoption/cme/minute/adu futureoption/cbot/minute/ozs"
+            "Example:\n  python3 fix_missed_strike_price_precision.py data/futureoption/cme/minute/adu\n"
+            "or multiple:\n  python3 fix_missed_strike_price_precision.py data/futureoption/cme/minute/adu futureoption/cbot/minute/ozs"
         )
 
     # Prepare output
@@ -149,16 +148,15 @@ def main():
         symbol = os.path.basename(provided_path_abs).lower()
         strike_scaling_factor_rule = StrikeScalingFactors.get(symbol)
         if not strike_scaling_factor_rule:
-            print(f"ERROR:: No scaling configured for symbol '{symbol}'")
+            print(f"ERROR: No scaling configured for symbol '{symbol}'")
             continue
 
         print(
             f"====== FOP ticker '{symbol}' | Strike scaling factor: '{strike_scaling_factor_rule}'")
 
         # preserve path starting after SCRIPT_DIR to make output structure readable
-        rel_src = os.path.relpath(provided_path_abs, SCRIPT_DIR)
-        print(provided_path_abs)
-
+        rel_src_data_root = os.path.relpath(provided_path_abs, SCRIPT_DIR)
+        rel_src = os.path.relpath(rel_src_data_root, "data")
         for expiry in os.listdir(provided_path_abs):
             expiry_path = os.path.join(provided_path_abs, expiry)
             out_expiry = os.path.join(OUT_BASE, rel_src, expiry)
