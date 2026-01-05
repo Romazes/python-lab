@@ -229,8 +229,8 @@ def test_process_zip_adu_with_scaling(tmp_path):
     src_zip = tmp_path / "20250115_quote_american.zip"
     
     # Create CSV files - adu also uses factor 1,000
-    # 62520 / 10_000 * 1_000 = 6252 % 10 = 2 (scaling needed)
-    # 62500 / 10_000 * 1_000 = 6250 % 10 = 0 (no scaling)
+    # 62520 / 10_000 * 1_000 = 6.252 * 1_000 = 6252, 6252 % 10 = 2 (scaling needed)
+    # 62500 / 10_000 * 1_000 = 6.25 * 1_000 = 6250, 6250 % 10 = 0 (no scaling)
     
     with ZipFile(src_zip, "w") as z:
         z.writestr("20250115_adu_minute_quote_american_call_62520_20260306.csv", "adu_data1")
@@ -268,16 +268,16 @@ def test_process_zip_jpu_with_scaling(tmp_path):
     src_zip = tmp_path / "20250120_trade_american.zip"
     
     # Create CSV files - jpu uses factor 100,000
-    # 10020 / 10_000 * 100_000 = 100200 % 10 = 0 (no scaling)
-    # 10022 / 10_000 * 100_000 = 100220 % 10 = 0 (no scaling)
+    # 10020 / 10_000 * 100_000 = 1.002 * 100_000 = 100200, 100200 % 10 = 0 (no scaling)
+    # 10022 / 10_000 * 100_000 = 1.0022 * 100_000 = 100220, 100220 % 10 = 0 (no scaling)
     # Let's create ones that need scaling:
     # For remainder 2: we need X where (X / 10_000 * 100_000) % 10 = 2
     # For remainder 7: we need X where (X / 10_000 * 100_000) % 10 = 7
     
     with ZipFile(src_zip, "w") as z:
-        # 100020 / 10_000 * 100_000 = 1000200000 % 10 = 0 (no scaling)
+        # 100020 / 10_000 * 100_000 = 10.002 * 100_000 = 1000200, 1000200 % 10 = 0 (no scaling)
         z.writestr("20250120_jpu_minute_trade_american_call_100020_20260615.csv", "jpu_data1")
-        # 10002 / 10_000 * 100_000 = 100020 % 10 = 0 (no scaling)
+        # 10002 / 10_000 * 100_000 = 1.0002 * 100_000 = 100020, 100020 % 10 = 0 (no scaling)
         z.writestr("20250120_jpu_minute_trade_american_put_10002_20260615.csv", "jpu_data2")
     
     # Create output path
