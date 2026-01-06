@@ -23,12 +23,16 @@ Example:
     pytest -v tests/test_fix_missed_strike_price_precision.py
 """
 
+import glob
 import os
-import sys
+import pathlib
 import shutil
+import sys
+
 import pytest
-from zipfile import ZipFile
 from decimal import Decimal
+from zipfile import ZipFile
+
 import scripts.fix_missed_strike_price_precision as script_module
 from scripts.fix_missed_strike_price_precision import (
     StrikeScalingRule,
@@ -394,7 +398,6 @@ def test_main_with_valid_euu_path(tmp_path, monkeypatch, capfd, script_temp_outp
         
         # Verify output file exists in temp-output-directory created next to script
         # The script creates temp-output-directory next to itself (in scripts/ directory)
-        import pathlib
         expected_output_dir = pathlib.Path(script_temp_output_dir)
         assert expected_output_dir.exists()
         
@@ -402,7 +405,6 @@ def test_main_with_valid_euu_path(tmp_path, monkeypatch, capfd, script_temp_outp
         # The output path is: temp-output-directory/<relative path from "data">/<expiry>
         # Since we provided absolute path, the relpath from "data" will be the full path structure
         # We need to find the output file in the temp-output-directory
-        import glob
         output_zips = list(expected_output_dir.glob("**/20251224_openinterest_american.zip"))
         assert len(output_zips) > 0, f"No output zip found in {expected_output_dir}"
         
@@ -486,12 +488,10 @@ def test_main_with_multiple_paths(tmp_path, monkeypatch, capfd, script_temp_outp
         assert "All provided paths processed successfully" in captured.out
         
         # Verify output files exist in the temp-output-directory next to script
-        import pathlib
         expected_output_dir = pathlib.Path(script_temp_output_dir)
         assert expected_output_dir.exists()
         
         # Verify output zips were created
-        import glob
         adu_zips = list(expected_output_dir.glob("**/20250115_quote_american.zip"))
         euu_zips = list(expected_output_dir.glob("**/20251224_openinterest_american.zip"))
         
@@ -559,7 +559,6 @@ def test_source_and_destination_path_mapping(tmp_path, monkeypatch, script_temp_
         main()
         
         # Verify the destination path structure
-        import pathlib
         output_dir = pathlib.Path(script_temp_output_dir)
         
         # Find the output zip
@@ -622,7 +621,6 @@ def test_source_destination_path_with_data_prefix(tmp_path, monkeypatch, script_
         main()
         
         # Verify the destination path structure
-        import pathlib
         output_dir = pathlib.Path(script_temp_output_dir)
         
         # Find the output zip
@@ -698,7 +696,6 @@ def test_multiple_expiry_folders_path_mapping(tmp_path, monkeypatch, script_temp
         main()
         
         # Verify the destination path structure
-        import pathlib
         output_dir = pathlib.Path(script_temp_output_dir)
         
         # Find both output zips
