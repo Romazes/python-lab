@@ -359,9 +359,11 @@ def test_main_with_valid_euu_path(tmp_path, monkeypatch, capfd, script_temp_outp
     
     This simulates the example from the user's comment:
     path: data/futureoption/cme/minute/euu/202603/20251224_openinterest_american.zip
+    
+    Note: The script uses removeprefix("Data/") with capital D, so we need to use "Data/" in the test.
     """
-    # Create test directory structure in temporary directory
-    test_dir = tmp_path / "data" / "futureoption" / "cme" / "minute" / "euu"
+    # Create test directory structure with capital D to match removeprefix("Data/")
+    test_dir = tmp_path / "Data" / "futureoption" / "cme" / "minute" / "euu"
     test_dir.mkdir(parents=True)
     
     # Create expiry folder
@@ -374,15 +376,15 @@ def test_main_with_valid_euu_path(tmp_path, monkeypatch, capfd, script_temp_outp
         z.writestr("20251224_euu_minute_openinterest_american_call_11600_20260109.csv", "data1")
         z.writestr("20251224_euu_minute_openinterest_american_call_11570_20260109.csv", "data2")
     
-    # Change to tmp_path directory
+    # Change to tmp_path directory so relative paths work
     original_cwd = os.getcwd()
     os.chdir(tmp_path)
     
     try:
-        # Mock sys.argv with the path
+        # Mock sys.argv with relative path starting with "Data/"
         monkeypatch.setattr(
             sys, 'argv', 
-            ['fix_missed_strike_price_precision.py', str(test_dir)]
+            ['fix_missed_strike_price_precision.py', 'Data/futureoption/cme/minute/euu']
         )
         
         # Run main
@@ -401,10 +403,8 @@ def test_main_with_valid_euu_path(tmp_path, monkeypatch, capfd, script_temp_outp
         expected_output_dir = pathlib.Path(script_temp_output_dir)
         assert expected_output_dir.exists()
         
-        # Verify the output zip file exists with correct structure
-        # The output path is: temp-output-directory/<relative path from "data">/<expiry>
-        # Since we provided absolute path, the relpath from "data" will be the full path structure
-        # We need to find the output file in the temp-output-directory
+        # The destination path is: temp-output-directory/ + removeprefix("Data/") + expiry
+        # So: temp-output-directory/futureoption/cme/minute/euu/202603/
         output_zips = list(expected_output_dir.glob("**/20251224_openinterest_american.zip"))
         assert len(output_zips) == 1, f"Expected exactly 1 output zip, found {len(output_zips)} in {expected_output_dir}"
         
@@ -449,8 +449,8 @@ def test_main_with_unknown_symbol(tmp_path, monkeypatch, capfd, script_temp_outp
 
 def test_main_with_multiple_paths(tmp_path, monkeypatch, capfd, script_temp_output_dir):
     """Test that main() processes multiple paths correctly."""
-    # Create first test directory (adu)
-    test_dir1 = tmp_path / "data" / "futureoption" / "cme" / "minute" / "adu"
+    # Create first test directory (adu) - using Data/ with capital D
+    test_dir1 = tmp_path / "Data" / "futureoption" / "cme" / "minute" / "adu"
     test_dir1.mkdir(parents=True)
     expiry_dir1 = test_dir1 / "202501"
     expiry_dir1.mkdir()
@@ -458,8 +458,8 @@ def test_main_with_multiple_paths(tmp_path, monkeypatch, capfd, script_temp_outp
     with ZipFile(zip_file1, "w") as z:
         z.writestr("20250115_adu_minute_quote_american_call_62520_20260306.csv", "adu_data")
     
-    # Create second test directory (euu)
-    test_dir2 = tmp_path / "data" / "futureoption" / "cme" / "minute" / "euu"
+    # Create second test directory (euu) - using Data/ with capital D
+    test_dir2 = tmp_path / "Data" / "futureoption" / "cme" / "minute" / "euu"
     test_dir2.mkdir(parents=True)
     expiry_dir2 = test_dir2 / "202603"
     expiry_dir2.mkdir()
@@ -472,10 +472,10 @@ def test_main_with_multiple_paths(tmp_path, monkeypatch, capfd, script_temp_outp
     os.chdir(tmp_path)
     
     try:
-        # Mock sys.argv with multiple paths
+        # Mock sys.argv with multiple relative paths starting with "Data/"
         monkeypatch.setattr(
             sys, 'argv', 
-            ['fix_missed_strike_price_precision.py', str(test_dir1), str(test_dir2)]
+            ['fix_missed_strike_price_precision.py', 'Data/futureoption/cme/minute/adu', 'Data/futureoption/cme/minute/euu']
         )
         
         # Run main
@@ -528,13 +528,13 @@ def test_source_and_destination_path_mapping(tmp_path, monkeypatch, script_temp_
     
     This test verifies that files from the source directory structure are correctly
     mapped to the destination directory structure, preserving the path hierarchy
-    from the "data" directory onwards.
+    after removing the "Data/" prefix.
     
-    Source: data/futureoption/cme/minute/euu/202603/20251224_openinterest_american.zip
+    Source: Data/futureoption/cme/minute/euu/202603/20251224_openinterest_american.zip
     Destination: temp-output-directory/futureoption/cme/minute/euu/202603/20251224_openinterest_american.zip
     """
-    # Create source directory structure
-    source_dir = tmp_path / "data" / "futureoption" / "cme" / "minute" / "euu"
+    # Create source directory structure with capital D
+    source_dir = tmp_path / "Data" / "futureoption" / "cme" / "minute" / "euu"
     source_dir.mkdir(parents=True)
     
     # Create expiry folder
@@ -551,10 +551,10 @@ def test_source_and_destination_path_mapping(tmp_path, monkeypatch, script_temp_
     os.chdir(tmp_path)
     
     try:
-        # Mock sys.argv with the source path
+        # Mock sys.argv with the relative path starting with "Data/"
         monkeypatch.setattr(
             sys, 'argv', 
-            ['fix_missed_strike_price_precision.py', str(source_dir)]
+            ['fix_missed_strike_price_precision.py', 'Data/futureoption/cme/minute/euu']
         )
         
         # Run main
@@ -570,8 +570,8 @@ def test_source_and_destination_path_mapping(tmp_path, monkeypatch, script_temp_
         output_zip = output_zips[0]
         
         # Verify the output path contains the expected structure
-        # The path should be: temp-output-directory/<relpath from "data">/<expiry>/<zipfile>
-        # Which means: temp-output-directory/.../futureoption/cme/minute/euu/202603/20251224_openinterest_american.zip
+        # The path should be: temp-output-directory/futureoption/cme/minute/euu/202603/20251224_openinterest_american.zip
+        # (Data/ prefix is stripped by removeprefix)
         assert "futureoption" in str(output_zip)
         assert "cme" in str(output_zip)
         assert "minute" in str(output_zip)
@@ -587,16 +587,18 @@ def test_source_and_destination_path_mapping(tmp_path, monkeypatch, script_temp_
 
 def test_source_destination_path_with_data_prefix(tmp_path, monkeypatch, script_temp_output_dir):
     """
-    Test source and destination path mapping when source path starts with 'data/'.
+    Test source and destination path mapping when source path starts with 'Data/'.
     
     This tests the scenario where the user provides a path like:
-    data/futureoption/cme/minute/euu
+    Data/futureoption/cme/minute/adu
     
-    The destination should strip the 'data' prefix and create:
-    temp-output-directory/futureoption/cme/minute/euu/<expiry>/<files>
+    The destination should strip the 'Data/' prefix and create:
+    temp-output-directory/futureoption/cme/minute/adu/<expiry>/<files>
+    
+    Note: The script uses removeprefix("Data/") with capital D.
     """
-    # Create source directory structure
-    source_dir = tmp_path / "data" / "futureoption" / "cme" / "minute" / "adu"
+    # Create source directory structure with capital D
+    source_dir = tmp_path / "Data" / "futureoption" / "cme" / "minute" / "adu"
     source_dir.mkdir(parents=True)
     
     # Create expiry folder
@@ -613,10 +615,10 @@ def test_source_destination_path_with_data_prefix(tmp_path, monkeypatch, script_
     os.chdir(tmp_path)
     
     try:
-        # Mock sys.argv with a relative path starting with 'data/'
+        # Mock sys.argv with a relative path starting with 'Data/'
         monkeypatch.setattr(
             sys, 'argv', 
-            ['fix_missed_strike_price_precision.py', 'data/futureoption/cme/minute/adu']
+            ['fix_missed_strike_price_precision.py', 'Data/futureoption/cme/minute/adu']
         )
         
         # Run main
@@ -631,9 +633,9 @@ def test_source_destination_path_with_data_prefix(tmp_path, monkeypatch, script_
         
         output_zip = output_zips[0]
         
-        # Verify the path structure excludes the "data" prefix from the output
+        # Verify the path structure excludes the "Data" prefix from the output
         # The output should be: temp-output-directory/futureoption/cme/minute/adu/202501/...
-        # NOT: temp-output-directory/data/futureoption/cme/minute/adu/202501/...
+        # NOT: temp-output-directory/Data/futureoption/cme/minute/adu/202501/...
         output_str = str(output_zip)
         
         # Verify the expected structure is present
@@ -642,6 +644,9 @@ def test_source_destination_path_with_data_prefix(tmp_path, monkeypatch, script_
         assert "minute" in output_str
         assert "adu" in output_str
         assert "202501" in output_str
+        
+        # Verify Data prefix was stripped
+        assert "/Data/" not in output_str and "\\Data\\" not in output_str
         
         # Verify the file was processed correctly
         with ZipFile(output_zip, "r") as z:
@@ -658,15 +663,15 @@ def test_multiple_expiry_folders_path_mapping(tmp_path, monkeypatch, script_temp
     Test that multiple expiry folders are correctly mapped from source to destination.
     
     Source structure:
-      data/futureoption/cme/minute/euu/202603/...
-      data/futureoption/cme/minute/euu/202604/...
+      Data/futureoption/cme/minute/euu/202603/...
+      Data/futureoption/cme/minute/euu/202604/...
       
     Destination structure:
       temp-output-directory/futureoption/cme/minute/euu/202603/...
       temp-output-directory/futureoption/cme/minute/euu/202604/...
     """
-    # Create source directory structure with multiple expiries
-    source_dir = tmp_path / "data" / "futureoption" / "cme" / "minute" / "euu"
+    # Create source directory structure with multiple expiries (capital D)
+    source_dir = tmp_path / "Data" / "futureoption" / "cme" / "minute" / "euu"
     source_dir.mkdir(parents=True)
     
     # Create first expiry folder
@@ -688,10 +693,10 @@ def test_multiple_expiry_folders_path_mapping(tmp_path, monkeypatch, script_temp
     os.chdir(tmp_path)
     
     try:
-        # Mock sys.argv with the source path
+        # Mock sys.argv with relative path starting with "Data/"
         monkeypatch.setattr(
             sys, 'argv', 
-            ['fix_missed_strike_price_precision.py', str(source_dir)]
+            ['fix_missed_strike_price_precision.py', 'Data/futureoption/cme/minute/euu']
         )
         
         # Run main
