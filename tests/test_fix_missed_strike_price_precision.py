@@ -360,7 +360,7 @@ def test_main_with_valid_euu_path(tmp_path, monkeypatch, capfd, script_temp_outp
     This simulates the example from the user's comment:
     path: data/futureoption/cme/minute/euu/202603/20251224_openinterest_american.zip
     """
-    # Create test directory structure in the repository
+    # Create test directory structure in temporary directory
     test_dir = tmp_path / "data" / "futureoption" / "cme" / "minute" / "euu"
     test_dir.mkdir(parents=True)
     
@@ -406,10 +406,12 @@ def test_main_with_valid_euu_path(tmp_path, monkeypatch, capfd, script_temp_outp
         # Since we provided absolute path, the relpath from "data" will be the full path structure
         # We need to find the output file in the temp-output-directory
         output_zips = list(expected_output_dir.glob("**/20251224_openinterest_american.zip"))
-        assert len(output_zips) > 0, f"No output zip found in {expected_output_dir}"
+        assert len(output_zips) == 1, f"Expected exactly 1 output zip, found {len(output_zips)} in {expected_output_dir}"
+        
+        output_zip = output_zips[0]
         
         # Verify the contents of the output zip
-        with ZipFile(output_zips[0], "r") as z:
+        with ZipFile(output_zip, "r") as z:
             namelist = z.namelist()
             # File with 11600 should not be scaled (remainder 0)
             assert "20251224_euu_minute_openinterest_american_call_11600_20260109.csv" in namelist
