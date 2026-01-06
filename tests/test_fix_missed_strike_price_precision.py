@@ -518,3 +518,216 @@ def test_main_with_non_directory_path(tmp_path, monkeypatch):
         main()
     
     assert "not a directory" in str(exc_info.value)
+
+
+def test_source_and_destination_path_mapping(tmp_path, monkeypatch, script_temp_output_dir):
+    """
+    Test that validates correct source and destination path mapping.
+    
+    This test verifies that files from the source directory structure are correctly
+    mapped to the destination directory structure, preserving the path hierarchy
+    from the "data" directory onwards.
+    
+    Source: data/futureoption/cme/minute/euu/202603/20251224_openinterest_american.zip
+    Destination: temp-output-directory/futureoption/cme/minute/euu/202603/20251224_openinterest_american.zip
+    """
+    # Create source directory structure
+    source_dir = tmp_path / "data" / "futureoption" / "cme" / "minute" / "euu"
+    source_dir.mkdir(parents=True)
+    
+    # Create expiry folder
+    expiry_dir = source_dir / "202603"
+    expiry_dir.mkdir()
+    
+    # Create source zip file
+    source_zip = expiry_dir / "20251224_openinterest_american.zip"
+    with ZipFile(source_zip, "w") as z:
+        z.writestr("20251224_euu_minute_openinterest_american_call_11570_20260109.csv", "test_data")
+    
+    # Change to tmp_path directory
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    
+    try:
+        # Mock sys.argv with the source path
+        monkeypatch.setattr(
+            sys, 'argv', 
+            ['fix_missed_strike_price_precision.py', str(source_dir)]
+        )
+        
+        # Run main
+        main()
+        
+        # Verify the destination path structure
+        import pathlib
+        output_dir = pathlib.Path(script_temp_output_dir)
+        
+        # Find the output zip
+        output_zips = list(output_dir.glob("**/20251224_openinterest_american.zip"))
+        assert len(output_zips) == 1, f"Expected exactly 1 output zip, found {len(output_zips)}"
+        
+        output_zip = output_zips[0]
+        
+        # Verify the output path contains the expected structure
+        # The path should be: temp-output-directory/<relpath from "data">/<expiry>/<zipfile>
+        # Which means: temp-output-directory/.../futureoption/cme/minute/euu/202603/20251224_openinterest_american.zip
+        assert "futureoption" in str(output_zip)
+        assert "cme" in str(output_zip)
+        assert "minute" in str(output_zip)
+        assert "euu" in str(output_zip)
+        assert "202603" in str(output_zip)
+        
+        # Verify the source file still exists (not moved, only copied)
+        assert source_zip.exists()
+        
+    finally:
+        os.chdir(original_cwd)
+
+
+def test_source_destination_path_with_data_prefix(tmp_path, monkeypatch, script_temp_output_dir):
+    """
+    Test source and destination path mapping when source path starts with 'data/'.
+    
+    This tests the scenario where the user provides a path like:
+    data/futureoption/cme/minute/euu
+    
+    The destination should strip the 'data' prefix and create:
+    temp-output-directory/futureoption/cme/minute/euu/<expiry>/<files>
+    """
+    # Create source directory structure
+    source_dir = tmp_path / "data" / "futureoption" / "cme" / "minute" / "adu"
+    source_dir.mkdir(parents=True)
+    
+    # Create expiry folder
+    expiry_dir = source_dir / "202501"
+    expiry_dir.mkdir()
+    
+    # Create source zip file
+    source_zip = expiry_dir / "20250115_quote_american.zip"
+    with ZipFile(source_zip, "w") as z:
+        z.writestr("20250115_adu_minute_quote_american_call_62520_20260306.csv", "adu_test_data")
+    
+    # Change to tmp_path directory to make relative paths work
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    
+    try:
+        # Mock sys.argv with a relative path starting with 'data/'
+        monkeypatch.setattr(
+            sys, 'argv', 
+            ['fix_missed_strike_price_precision.py', 'data/futureoption/cme/minute/adu']
+        )
+        
+        # Run main
+        main()
+        
+        # Verify the destination path structure
+        import pathlib
+        output_dir = pathlib.Path(script_temp_output_dir)
+        
+        # Find the output zip
+        output_zips = list(output_dir.glob("**/20250115_quote_american.zip"))
+        assert len(output_zips) == 1, f"Expected exactly 1 output zip, found {len(output_zips)}"
+        
+        output_zip = output_zips[0]
+        
+        # Verify the path structure excludes the "data" prefix from the output
+        # The output should be: temp-output-directory/futureoption/cme/minute/adu/202501/...
+        # NOT: temp-output-directory/data/futureoption/cme/minute/adu/202501/...
+        output_str = str(output_zip)
+        
+        # Verify the expected structure is present
+        assert "futureoption" in output_str
+        assert "cme" in output_str
+        assert "minute" in output_str
+        assert "adu" in output_str
+        assert "202501" in output_str
+        
+        # Verify the file was processed correctly
+        with ZipFile(output_zip, "r") as z:
+            namelist = z.namelist()
+            # File with 62520 should be scaled to 62525 (remainder 2)
+            assert "20250115_adu_minute_quote_american_call_62525_20260306.csv" in namelist
+            
+    finally:
+        os.chdir(original_cwd)
+
+
+def test_multiple_expiry_folders_path_mapping(tmp_path, monkeypatch, script_temp_output_dir):
+    """
+    Test that multiple expiry folders are correctly mapped from source to destination.
+    
+    Source structure:
+      data/futureoption/cme/minute/euu/202603/...
+      data/futureoption/cme/minute/euu/202604/...
+      
+    Destination structure:
+      temp-output-directory/futureoption/cme/minute/euu/202603/...
+      temp-output-directory/futureoption/cme/minute/euu/202604/...
+    """
+    # Create source directory structure with multiple expiries
+    source_dir = tmp_path / "data" / "futureoption" / "cme" / "minute" / "euu"
+    source_dir.mkdir(parents=True)
+    
+    # Create first expiry folder
+    expiry_dir1 = source_dir / "202603"
+    expiry_dir1.mkdir()
+    source_zip1 = expiry_dir1 / "20251224_quote_american.zip"
+    with ZipFile(source_zip1, "w") as z:
+        z.writestr("20251224_euu_minute_quote_american_call_11570_20260309.csv", "data1")
+    
+    # Create second expiry folder
+    expiry_dir2 = source_dir / "202604"
+    expiry_dir2.mkdir()
+    source_zip2 = expiry_dir2 / "20260105_trade_american.zip"
+    with ZipFile(source_zip2, "w") as z:
+        z.writestr("20260105_euu_minute_trade_american_put_11620_20260415.csv", "data2")
+    
+    # Change to tmp_path directory
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    
+    try:
+        # Mock sys.argv with the source path
+        monkeypatch.setattr(
+            sys, 'argv', 
+            ['fix_missed_strike_price_precision.py', str(source_dir)]
+        )
+        
+        # Run main
+        main()
+        
+        # Verify the destination path structure
+        import pathlib
+        output_dir = pathlib.Path(script_temp_output_dir)
+        
+        # Find both output zips
+        output_zip1_list = list(output_dir.glob("**/202603/20251224_quote_american.zip"))
+        output_zip2_list = list(output_dir.glob("**/202604/20260105_trade_american.zip"))
+        
+        assert len(output_zip1_list) == 1, f"Expected exactly 1 output zip for 202603, found {len(output_zip1_list)}"
+        assert len(output_zip2_list) == 1, f"Expected exactly 1 output zip for 202604, found {len(output_zip2_list)}"
+        
+        # Verify both expiry folders are correctly mapped
+        output_zip1 = output_zip1_list[0]
+        output_zip2 = output_zip2_list[0]
+        
+        # Verify path structure for first expiry
+        assert "202603" in str(output_zip1)
+        assert "euu" in str(output_zip1)
+        
+        # Verify path structure for second expiry
+        assert "202604" in str(output_zip2)
+        assert "euu" in str(output_zip2)
+        
+        # Verify files were processed correctly
+        with ZipFile(output_zip1, "r") as z:
+            namelist = z.namelist()
+            assert "20251224_euu_minute_quote_american_call_11575_20260309.csv" in namelist
+        
+        with ZipFile(output_zip2, "r") as z:
+            namelist = z.namelist()
+            assert "20260105_euu_minute_trade_american_put_11625_20260415.csv" in namelist
+            
+    finally:
+        os.chdir(original_cwd)
