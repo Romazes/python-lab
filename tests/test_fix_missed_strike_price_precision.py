@@ -356,12 +356,8 @@ def test_main_with_valid_euu_path(tmp_path, monkeypatch, capfd, script_temp_outp
     This simulates the example from the user's comment:
     path: data/futureoption/cme/minute/euu/202603/20251224_openinterest_american.zip
     """
-    # Create test directory structure in a location close to the script
-    # to avoid very long relative paths
-    test_workspace = tmp_path / "workspace"
-    test_workspace.mkdir()
-    
-    test_dir = test_workspace / "data" / "futureoption" / "cme" / "minute" / "euu"
+    # Create test directory structure in the repository
+    test_dir = tmp_path / "data" / "futureoption" / "cme" / "minute" / "euu"
     test_dir.mkdir(parents=True)
     
     # Create expiry folder
@@ -374,19 +370,15 @@ def test_main_with_valid_euu_path(tmp_path, monkeypatch, capfd, script_temp_outp
         z.writestr("20251224_euu_minute_openinterest_american_call_11600_20260109.csv", "data1")
         z.writestr("20251224_euu_minute_openinterest_american_call_11570_20260109.csv", "data2")
     
-    # Change to workspace directory to make paths shorter
+    # Change to tmp_path directory
     original_cwd = os.getcwd()
-    os.chdir(test_workspace)
+    os.chdir(tmp_path)
     
     try:
-        # Mock SCRIPT_DIR to be in the same temp directory to avoid cross-drive issues on Windows
-        monkeypatch.setattr(script_module, 'SCRIPT_DIR', str(test_workspace))
-        monkeypatch.setattr(script_module, 'OUT_BASE', str(test_workspace / "temp-output-directory"))
-        
         # Mock sys.argv with the path
         monkeypatch.setattr(
             sys, 'argv', 
-            ['fix_missed_strike_price_precision.py', 'data/futureoption/cme/minute/euu']
+            ['fix_missed_strike_price_precision.py', str(test_dir)]
         )
         
         # Run main
@@ -400,9 +392,27 @@ def test_main_with_valid_euu_path(tmp_path, monkeypatch, capfd, script_temp_outp
         assert "euu" in captured.out
         assert "All provided paths processed successfully" in captured.out
         
-        # Verify output file exists in temp-output-directory
-        # The script creates output relative to the script directory
-        assert script_temp_output_dir is not None
+        # Verify output file exists in temp-output-directory created next to script
+        # The script creates temp-output-directory next to itself (in scripts/ directory)
+        import pathlib
+        expected_output_dir = pathlib.Path(script_temp_output_dir)
+        assert expected_output_dir.exists()
+        
+        # Verify the output zip file exists with correct structure
+        # The output path is: temp-output-directory/<relative path from "data">/<expiry>
+        # Since we provided absolute path, the relpath from "data" will be the full path structure
+        # We need to find the output file in the temp-output-directory
+        import glob
+        output_zips = list(expected_output_dir.glob("**/20251224_openinterest_american.zip"))
+        assert len(output_zips) > 0, f"No output zip found in {expected_output_dir}"
+        
+        # Verify the contents of the output zip
+        with ZipFile(output_zips[0], "r") as z:
+            namelist = z.namelist()
+            # File with 11600 should not be scaled (remainder 0)
+            assert "20251224_euu_minute_openinterest_american_call_11600_20260109.csv" in namelist
+            # File with 11570 should be scaled to 11575 (remainder 7)
+            assert "20251224_euu_minute_openinterest_american_call_11575_20260109.csv" in namelist
     finally:
         os.chdir(original_cwd)
 
@@ -435,12 +445,8 @@ def test_main_with_unknown_symbol(tmp_path, monkeypatch, capfd, script_temp_outp
 
 def test_main_with_multiple_paths(tmp_path, monkeypatch, capfd, script_temp_output_dir):
     """Test that main() processes multiple paths correctly."""
-    # Create test workspace to avoid very long relative paths
-    test_workspace = tmp_path / "workspace"
-    test_workspace.mkdir()
-    
     # Create first test directory (adu)
-    test_dir1 = test_workspace / "data" / "futureoption" / "cme" / "minute" / "adu"
+    test_dir1 = tmp_path / "data" / "futureoption" / "cme" / "minute" / "adu"
     test_dir1.mkdir(parents=True)
     expiry_dir1 = test_dir1 / "202501"
     expiry_dir1.mkdir()
@@ -449,7 +455,7 @@ def test_main_with_multiple_paths(tmp_path, monkeypatch, capfd, script_temp_outp
         z.writestr("20250115_adu_minute_quote_american_call_62520_20260306.csv", "adu_data")
     
     # Create second test directory (euu)
-    test_dir2 = test_workspace / "data" / "futureoption" / "cme" / "minute" / "euu"
+    test_dir2 = tmp_path / "data" / "futureoption" / "cme" / "minute" / "euu"
     test_dir2.mkdir(parents=True)
     expiry_dir2 = test_dir2 / "202603"
     expiry_dir2.mkdir()
@@ -457,19 +463,15 @@ def test_main_with_multiple_paths(tmp_path, monkeypatch, capfd, script_temp_outp
     with ZipFile(zip_file2, "w") as z:
         z.writestr("20251224_euu_minute_openinterest_american_call_11570_20260109.csv", "euu_data")
     
-    # Change to workspace directory to make paths shorter
+    # Change to tmp_path directory
     original_cwd = os.getcwd()
-    os.chdir(test_workspace)
+    os.chdir(tmp_path)
     
     try:
-        # Mock SCRIPT_DIR to be in the same temp directory to avoid cross-drive issues on Windows
-        monkeypatch.setattr(script_module, 'SCRIPT_DIR', str(test_workspace))
-        monkeypatch.setattr(script_module, 'OUT_BASE', str(test_workspace / "temp-output-directory"))
-        
         # Mock sys.argv with multiple paths
         monkeypatch.setattr(
             sys, 'argv', 
-            ['fix_missed_strike_price_precision.py', 'data/futureoption/cme/minute/adu', 'data/futureoption/cme/minute/euu']
+            ['fix_missed_strike_price_precision.py', str(test_dir1), str(test_dir2)]
         )
         
         # Run main
@@ -482,6 +484,19 @@ def test_main_with_multiple_paths(tmp_path, monkeypatch, capfd, script_temp_outp
         assert "adu" in captured.out
         assert "euu" in captured.out
         assert "All provided paths processed successfully" in captured.out
+        
+        # Verify output files exist in the temp-output-directory next to script
+        import pathlib
+        expected_output_dir = pathlib.Path(script_temp_output_dir)
+        assert expected_output_dir.exists()
+        
+        # Verify output zips were created
+        import glob
+        adu_zips = list(expected_output_dir.glob("**/20250115_quote_american.zip"))
+        euu_zips = list(expected_output_dir.glob("**/20251224_openinterest_american.zip"))
+        
+        assert len(adu_zips) > 0, f"No adu output zip found in {expected_output_dir}"
+        assert len(euu_zips) > 0, f"No euu output zip found in {expected_output_dir}"
     finally:
         os.chdir(original_cwd)
 
