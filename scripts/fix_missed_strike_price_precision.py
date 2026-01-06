@@ -105,6 +105,7 @@ def process_zip(zip_path, out_zip_path, strike_scaling_factor_rule: StrikeScalin
                             scaled_strike_file_name_format, strike_scaling_factor_rule.factor)
                         new_name_file_csv = original_name_file_csv.replace(
                             f"_{scaled_strike_file_name_format}_", f"_{new_strike}_")
+                        print(f"rename: {original_name_file_csv} => {new_name_file_csv}")
                         counter_csv_files += 1
                     else:
                         counter_skip_files += 1
@@ -159,7 +160,7 @@ def main():
             src_dir_expiry = os.path.join(provided_path_abs, expiry)
             # <path_to_folder>/temp-output-directory/futureoption/cme/minute/euu/202603
             dst_dir_expiry = os.path.join(
-                temp_output_directory, os.path.relpath(provided_path_abs, "data"), expiry)
+                temp_output_directory, provided_path.removeprefix("Data/"), expiry)
             os.makedirs(dst_dir_expiry, exist_ok=True)
             # <path_to_folder>/data/futureoption/cme/minute/euu/202603/<zips>
             for zip_file in os.listdir(src_dir_expiry):
