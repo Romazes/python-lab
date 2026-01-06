@@ -356,12 +356,8 @@ def test_main_with_valid_euu_path(tmp_path, monkeypatch, capfd, script_temp_outp
     This simulates the example from the user's comment:
     path: data/futureoption/cme/minute/euu/202603/20251224_openinterest_american.zip
     """
-    # Create test directory structure in a location close to the script
-    # to avoid very long relative paths
-    test_workspace = tmp_path / "workspace"
-    test_workspace.mkdir()
-    
-    test_dir = test_workspace / "data" / "futureoption" / "cme" / "minute" / "euu"
+    # Create test directory structure
+    test_dir = tmp_path / "data" / "futureoption" / "cme" / "minute" / "euu"
     test_dir.mkdir(parents=True)
     
     # Create expiry folder
@@ -374,37 +370,27 @@ def test_main_with_valid_euu_path(tmp_path, monkeypatch, capfd, script_temp_outp
         z.writestr("20251224_euu_minute_openinterest_american_call_11600_20260109.csv", "data1")
         z.writestr("20251224_euu_minute_openinterest_american_call_11570_20260109.csv", "data2")
     
-    # Change to workspace directory to make paths shorter
-    original_cwd = os.getcwd()
-    os.chdir(test_workspace)
+    # Mock sys.argv with the path
+    monkeypatch.setattr(
+        sys, 'argv', 
+        ['fix_missed_strike_price_precision.py', str(test_dir)]
+    )
     
-    try:
-        # Mock SCRIPT_DIR to be in the same temp directory to avoid cross-drive issues on Windows
-        monkeypatch.setattr(script_module, 'SCRIPT_DIR', str(test_workspace))
-        monkeypatch.setattr(script_module, 'OUT_BASE', str(test_workspace / "temp-output-directory"))
-        
-        # Mock sys.argv with the path
-        monkeypatch.setattr(
-            sys, 'argv', 
-            ['fix_missed_strike_price_precision.py', 'data/futureoption/cme/minute/euu']
-        )
-        
-        # Run main
-        main()
-        
-        # Capture output
-        captured = capfd.readouterr()
-        
-        # Verify output messages
-        assert "Processing provided path" in captured.out
-        assert "euu" in captured.out
-        assert "All provided paths processed successfully" in captured.out
-        
-        # Verify output file exists in temp-output-directory
-        # The script creates output relative to the script directory
-        assert script_temp_output_dir is not None
-    finally:
-        os.chdir(original_cwd)
+    # Run main
+    main()
+    
+    # Capture output
+    captured = capfd.readouterr()
+    
+    # Verify output messages
+    assert "Processing provided path" in captured.out
+    assert "euu" in captured.out
+    assert "All provided paths processed successfully" in captured.out
+    
+    # Verify output file exists in temp-output-directory
+    # The script creates output relative to the script directory
+    output_dir = os.path.join(os.path.dirname(script_module.__file__), "temp-output-directory")
+    assert os.path.exists(output_dir)
 
 
 def test_main_with_unknown_symbol(tmp_path, monkeypatch, capfd, script_temp_output_dir):
@@ -435,12 +421,8 @@ def test_main_with_unknown_symbol(tmp_path, monkeypatch, capfd, script_temp_outp
 
 def test_main_with_multiple_paths(tmp_path, monkeypatch, capfd, script_temp_output_dir):
     """Test that main() processes multiple paths correctly."""
-    # Create test workspace to avoid very long relative paths
-    test_workspace = tmp_path / "workspace"
-    test_workspace.mkdir()
-    
     # Create first test directory (adu)
-    test_dir1 = test_workspace / "data" / "futureoption" / "cme" / "minute" / "adu"
+    test_dir1 = tmp_path / "adu"
     test_dir1.mkdir(parents=True)
     expiry_dir1 = test_dir1 / "202501"
     expiry_dir1.mkdir()
@@ -449,7 +431,7 @@ def test_main_with_multiple_paths(tmp_path, monkeypatch, capfd, script_temp_outp
         z.writestr("20250115_adu_minute_quote_american_call_62520_20260306.csv", "adu_data")
     
     # Create second test directory (euu)
-    test_dir2 = test_workspace / "data" / "futureoption" / "cme" / "minute" / "euu"
+    test_dir2 = tmp_path / "euu"
     test_dir2.mkdir(parents=True)
     expiry_dir2 = test_dir2 / "202603"
     expiry_dir2.mkdir()
@@ -457,33 +439,22 @@ def test_main_with_multiple_paths(tmp_path, monkeypatch, capfd, script_temp_outp
     with ZipFile(zip_file2, "w") as z:
         z.writestr("20251224_euu_minute_openinterest_american_call_11570_20260109.csv", "euu_data")
     
-    # Change to workspace directory to make paths shorter
-    original_cwd = os.getcwd()
-    os.chdir(test_workspace)
+    # Mock sys.argv with multiple paths
+    monkeypatch.setattr(
+        sys, 'argv', 
+        ['fix_missed_strike_price_precision.py', str(test_dir1), str(test_dir2)]
+    )
     
-    try:
-        # Mock SCRIPT_DIR to be in the same temp directory to avoid cross-drive issues on Windows
-        monkeypatch.setattr(script_module, 'SCRIPT_DIR', str(test_workspace))
-        monkeypatch.setattr(script_module, 'OUT_BASE', str(test_workspace / "temp-output-directory"))
-        
-        # Mock sys.argv with multiple paths
-        monkeypatch.setattr(
-            sys, 'argv', 
-            ['fix_missed_strike_price_precision.py', 'data/futureoption/cme/minute/adu', 'data/futureoption/cme/minute/euu']
-        )
-        
-        # Run main
-        main()
-        
-        # Capture output
-        captured = capfd.readouterr()
-        
-        # Verify both paths were processed
-        assert "adu" in captured.out
-        assert "euu" in captured.out
-        assert "All provided paths processed successfully" in captured.out
-    finally:
-        os.chdir(original_cwd)
+    # Run main
+    main()
+    
+    # Capture output
+    captured = capfd.readouterr()
+    
+    # Verify both paths were processed
+    assert "adu" in captured.out
+    assert "euu" in captured.out
+    assert "All provided paths processed successfully" in captured.out
 
 
 def test_main_with_non_directory_path(tmp_path, monkeypatch):

@@ -158,8 +158,18 @@ def main():
             # <path_to_folder>/data/futureoption/cme/minute/euu/202603
             src_dir_expiry = os.path.join(provided_path_abs, expiry)
             # <path_to_folder>/temp-output-directory/futureoption/cme/minute/euu/202603
-            dst_dir_expiry = os.path.join(
-                temp_output_directory, os.path.relpath(provided_path_abs, "data"), expiry)
+            # Strip "data/" prefix if present, otherwise use the full path structure
+            if "data" + os.sep in provided_path_abs or provided_path_abs.startswith("data" + os.sep):
+                # Find the "data" directory in the path and get everything after it
+                data_index = provided_path_abs.find("data" + os.sep)
+                if data_index != -1:
+                    rel_path = provided_path_abs[data_index + len("data" + os.sep):]
+                else:
+                    rel_path = provided_path_abs
+            else:
+                # Use the basename of the provided path to create a simpler output structure
+                rel_path = symbol
+            dst_dir_expiry = os.path.join(temp_output_directory, rel_path, expiry)
             os.makedirs(dst_dir_expiry, exist_ok=True)
             # <path_to_folder>/data/futureoption/cme/minute/euu/202603/<zips>
             for zip_file in os.listdir(src_dir_expiry):
