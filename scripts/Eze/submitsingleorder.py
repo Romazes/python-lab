@@ -1,10 +1,18 @@
 import time
 from datetime import datetime
-from threading import Event, Thread
+from threading import Event, Thread, Lock
 from uuid import uuid4
 import order_pb2 as ord
 import order_pb2_grpc as ord_grpc
 from emsxapilibrary import EMSXAPILibrary
+
+class OrderTimingStore:
+    def __init__(self):
+        self.submit_times = {}   # order_id -> submit_time
+        self.lock = Lock()
+
+timing = OrderTimingStore()
+
 
 class CreateSingleOrder:
     def __init__(self):
@@ -37,40 +45,55 @@ class CreateSingleOrder:
     def subscribe_order_info(self):
 
         subscribe_request = ord.SubscribeOrderInfoRequest()
+        subscribe_request.ExcludeHistory = True
         subscribe_request.UserToken = self.xapiLib.userToken
-        subscribe_response = self.xapiLib.get_order_service_stub().SubscribeOrderInfo(subscribe_request)
+        start = time.perf_counter()
+        subscribe_response = self.xapiLib.get_order_service_stub().SubscribeOrderInfo(subscribe_request) # 1
         self.ready.set()
-
+        
         try:
             for order_info in subscribe_response:
-                message = "OrderId: " + order_info.OrderId \
-                          + " Symbol:" + order_info.Symbol \
-                          + " Type:" + order_info.Type \
-                          + " CurrentStatus:" + order_info.CurrentStatus \
-                          + " Volume:" + str(order_info.Volume) \
-                          + " VolumeTraded:" + str(order_info.VolumeTraded) \
-                          + " Price:" + str(order_info.Price.value) \
-                          + " PriceType:" + order_info.PriceType.PriceTypesEnum.Name(order_info.PriceType.PriceType) \
-                          + " Reason:" + order_info.Reason \
-                          + " TimeStamp:" + str(order_info.TimeStamp) \
-                          + " GoodFrom:" + str(order_info.GoodFrom) \
-                          + " TimeInForce:" + order_info.TimeInForce.ExpirationTypes.Name(
-                    order_info.TimeInForce.Expiration) \
-                          + " StopPrice:" + str(order_info.StopPrice) \
-                          + " UserMessage:" + order_info.UserMessage \
-                          + " ExpirationDate:" + order_info.ExpirationDate.ToJsonString() \
-                          + " Side:" + order_info.Side \
-                          + " Route:" + order_info.Route \
-                          + " Account:" + order_info.Account \
-                          + " OrderTag:" + order_info.OrderTag \
-                          + " TraderId:" + order_info.TraderId \
-                          + " ClaimedByClerk:" + order_info.ClaimedByClerk \
+                now = time.perf_counter()
+                # message = "OrderId: " + order_info.OrderId \
+                #           + " Symbol:" + order_info.Symbol \
+                #           + " Type:" + order_info.Type \
+                #           + " CurrentStatus:" + order_info.CurrentStatus \
+                #           + " Volume:" + str(order_info.Volume) \
+                #           + " VolumeTraded:" + str(order_info.VolumeTraded) \
+                #           + " Price:" + str(order_info.Price.value) \
+                #           + " PriceType:" + order_info.PriceType.PriceTypesEnum.Name(order_info.PriceType.PriceType) \
+                #           + " Reason:" + order_info.Reason \
+                #           + " TimeStamp:" + str(order_info.TimeStamp) \
+                #           + " GoodFrom:" + str(order_info.GoodFrom) \
+                #           + " TimeInForce:" + order_info.TimeInForce.ExpirationTypes.Name(
+                #     order_info.TimeInForce.Expiration) \
+                #           + " StopPrice:" + str(order_info.StopPrice) \
+                #           + " UserMessage:" + order_info.UserMessage \
+                #           + " ExpirationDate:" + order_info.ExpirationDate.ToJsonString() \
+                #           + " Side:" + order_info.Side \
+                #           + " Route:" + order_info.Route \
+                #           + " Account:" + order_info.Account \
+                #           + " OrderTag:" + order_info.OrderTag \
+                #           + " TraderId:" + order_info.TraderId \
+                #           + " ClaimedByClerk:" + order_info.ClaimedByClerk \
                     # + " LinkedOrderId:" + order_info.LinkedOrderId \
                 # + " RefersToId:" + order_info.RefersToId \
                 # + " TicketId:" + order_info.TicketId \
                 # + " OriginalOrderId:" + order_info.OriginalOrderId \
                 # + " PairSpreadType:" + order_info.PairSpreadType \
-                print(message)
+                print(f'The Stream response: {order_info.OrderId}, {order_info.Symbol}, Tag = {order_info.OrderTag}')
+                tag_id = order_info.OrderTag
+                now = time.perf_counter()
+
+                with timing.lock:
+                    submit_time = timing.submit_times.pop(tag_id, None)
+
+                if submit_time is not None:
+                    latency_ms = (now - submit_time) * 1000
+                    print(
+                        f"OrderTag {tag_id}: "
+                        f"Submit => stream latency = {latency_ms:.2f} ms"
+                    )
         except Exception as e:
             print(e)
 
@@ -99,19 +122,21 @@ class CreateSingleOrder:
 
         single_order.ExtendedFields['ACCT_TYPE'] = '119'
 
-
+        start = time.perf_counter()
+        with timing.lock:
+            timing.submit_times[self.my_order_id] = start
         singleorder_submit_response = self.xapiLib.get_order_service_stub().SubmitSingleOrder(single_order)
-        print("Server Response:" + str(singleorder_submit_response.ServerResponse))
-        if single_order.ReturnResult:
-            print("Order Details:" + str(singleorder_submit_response.OrderDetails))
-            print("PriceType: " + str(
-                singleorder_submit_response.OrderDetails.PriceType.PriceType))  # Market = 0, Limit = 1, StopMarket = 2, StopLimit = 3, Other = 4
+        print(f"The SubmitSingleOrder Response: {str(singleorder_submit_response.ServerResponse)} " +
+              f"The RPC latency: {(time.perf_counter() - start)*1000:.2f} ms")
+        # if single_order.ReturnResult:
+        #     print("Order Details:" + str(singleorder_submit_response.OrderDetails))
+        #     print("PriceType: " + str(
+        #         singleorder_submit_response.OrderDetails.PriceType.PriceType))  # Market = 0, Limit = 1, StopMarket = 2, StopLimit = 3, Other = 4
     
 if __name__ == '__main__':
     submit_order = CreateSingleOrder()
     submit_order.xapiLib.login()
-    if not submit_order.get_order_details:
-        submit_order.start_listening()
+    submit_order.start_listening()
     submit_order.send_single_order()  # API call
     time.sleep(10)  
         
