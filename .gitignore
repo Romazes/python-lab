@@ -210,4 +210,4 @@ marimo/_lsp/
 __marimo__/
 
 # Brokerage Eze configuration file
-scripts/brokerage_eze/**/config.cfg
+scripts/brokerage_eze/config.cfg
