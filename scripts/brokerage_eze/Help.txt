@@ -1,0 +1,11 @@
+Command for generating python compiling proto files (Google Protocol Buffer)
+
+python -m grpc_tools.protoc -I proto-path --python_out=. --grpc_python_out=. proto-path/proto
+
+ 
+
+
+
+
+
+

@@ -1,0 +1,7 @@
+# version file for XAPI client
+# This is the dev version and it follows rtrepl.config version 
+Name  : "Eze EMS xAPI"
+Major : 2025
+Minor : 8
+Rev   : 0
+Build : 1

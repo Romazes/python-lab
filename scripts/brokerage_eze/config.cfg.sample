@@ -1,0 +1,14 @@
+[Auth Config Section]
+password = XXXX
+server = XXXX
+user = XXXX
+domain = XXXX
+locale = XXXX
+port = XXXX
+cert_file_path = XXXX
+ssl = true
+srp_login = true
+keep_alive_time = 3600000
+keep_alive_timeout = 30000
+max_retry_count = 3
+retry_delay_ms = 1000
